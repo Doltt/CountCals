@@ -202,8 +202,8 @@ struct CapturePreviewView: View {
                     StickerImageView(
                         cutoutImage: cutout,
                         outlineImage: outlineImage,
-                        maxWidth: 280,
-                        maxHeight: 350
+                        maxWidth: 520,
+                        maxHeight: 600
                     )
                     .scaleEffect(cutoutScale)
                     .opacity(cutoutOpacity)
@@ -226,7 +226,7 @@ struct CapturePreviewView: View {
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: 280, maxHeight: 350)
+                        .frame(maxWidth: 320, maxHeight: 400)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
 
@@ -290,8 +290,8 @@ struct CapturePreviewView: View {
 struct StickerImageView: View {
     let cutoutImage: UIImage
     let outlineImage: UIImage?
-    var maxWidth: CGFloat = 220
-    var maxHeight: CGFloat = 260
+    var maxWidth: CGFloat = 600
+    var maxHeight: CGFloat = 700
     
     var body: some View {
         ZStack {

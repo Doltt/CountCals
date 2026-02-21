@@ -2,49 +2,45 @@
 //  ContentView.swift
 //  Pace
 //
-//  Main container view with TabView navigation and floating add food button.
+//  Main container view with horizontal paging (swipe navigation).
+//  Left: Settings | Center: Home Dashboard | Right: Daily Food Log
 //
 
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @State private var selectedTab = 0
+    @State private var selectedTab = 1
     @State private var showingAddFood = false
-    @State private var settings = AppSettingsManager.shared
     @Binding var externalShowAddFood: Bool
+    @Environment(\.colorScheme) private var colorScheme
     
     init(externalShowAddFood: Binding<Bool> = .constant(false)) {
         _externalShowAddFood = externalShowAddFood
     }
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // MARK: - TabView
-            TabView(selection: $selectedTab) {
-                // Home Tab
-                HomeView()
-                    .tabItem {
-                        Label(settings.localized(.homeTab), systemImage: "house.fill")
-                    }
-                    .tag(0)
-                
-                // Settings Tab
-                SettingsView()
-                    .tabItem {
-                        Label(settings.localized(.settingsTab), systemImage: "gearshape.fill")
-                    }
-                    .tag(1)
-            }
+        TabView(selection: $selectedTab) {
+            // Left: Settings
+            SettingsView()
+                .tag(0)
             
-            // MARK: - Floating Add Food Button
-            floatingAddFoodButton
-                .padding(.bottom, 12)
+            // Center: Home Dashboard
+            HomeView(onAddFood: {
+                showingAddFood = true
+            })
+            .tag(1)
+            
+            // Right: Daily Food Log
+            DailyFoodLogView()
+                .tag(2)
         }
+        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
         .ignoresSafeArea(edges: .bottom)
         .fullScreenCover(isPresented: $showingAddFood) {
             AddFoodView(onAddSuccess: {
-                selectedTab = 0
+                // After adding food, jump to Daily Food Log
+                selectedTab = 2
             })
             .environment(\.font, Font.system(.body, design: .rounded))
         }
@@ -53,34 +49,6 @@ struct ContentView: View {
                 showingAddFood = true
                 externalShowAddFood = false
             }
-        }
-    }
-    
-    // MARK: - Floating Add Food Button
-    private var floatingAddFoodButton: some View {
-        HStack {
-            Spacer()
-            
-            Button {
-                showingAddFood = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                        .font(.paceRounded(.subheadline, weight: .semibold))
-                    Text(settings.localized(.addFood))
-                        .font(.paceRounded(.subheadline, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(
-                    Capsule()
-                        .fill(Color(red: 1, green: 0.267, blue: 0))
-                        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
-                )
-            }
-            .buttonStyle(.plain)
-            .padding(.trailing, 20)
         }
     }
 }

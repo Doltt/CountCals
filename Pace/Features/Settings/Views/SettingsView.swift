@@ -234,6 +234,7 @@ private struct SettingsRow: View {
                     .font(.paceRounded(.caption))
                     .foregroundStyle(.tertiary)
             }
+            .contentShape(Rectangle())
             .padding()
         }
         .buttonStyle(.plain)

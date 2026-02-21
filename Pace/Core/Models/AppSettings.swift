@@ -230,6 +230,9 @@ enum LocalizedKey {
     case enterWeight
     case homeTab
     case settingsTab
+    case dailyFoodLog
+    case noFoodToday
+    case foodDetail
 
     var en: String {
         switch self {
@@ -341,6 +344,9 @@ enum LocalizedKey {
         case .enterWeight: return "Enter Weight"
         case .homeTab: return "Home"
         case .settingsTab: return "Settings"
+        case .dailyFoodLog: return "Daily Food Log"
+        case .noFoodToday: return "No food recorded today"
+        case .foodDetail: return "Food Detail"
         }
     }
 
@@ -454,6 +460,9 @@ enum LocalizedKey {
         case .enterWeight: return "输入体重"
         case .homeTab: return "首页"
         case .settingsTab: return "设置"
+        case .dailyFoodLog: return "今日饮食记录"
+        case .noFoodToday: return "今天还没有记录食物"
+        case .foodDetail: return "食物详情"
         }
     }
 }

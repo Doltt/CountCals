@@ -12,15 +12,28 @@ import Foundation
 // MARK: - Recognition Result
 
 struct FoodRecognitionResponse: Equatable {
-    let name: String
+    let name: String           // English name
+    let nameCN: String         // Chinese name
     let calories: Int
     let carbs: Int      // grams
     let protein: Int    // grams
     let fat: Int        // grams
     
+    /// Localized name based on current language setting
+    var localizedName: String {
+        let language = AppSettingsManager.shared.language
+        switch language {
+        case .chinese:
+            return nameCN.isEmpty ? name : nameCN
+        case .english:
+            return name
+        }
+    }
+    
     /// Fallback result when API fails
     static let unknown = FoodRecognitionResponse(
         name: "Unknown Food",
+        nameCN: "未知食物",
         calories: 0,
         carbs: 0,
         protein: 0,
@@ -120,20 +133,21 @@ final class FoodRecognitionService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
         
-        // Build prompt for food recognition
+        // Build prompt for food recognition with bilingual support
         let prompt = """
         请识别这张图片中的食物，并以 JSON 格式返回以下信息：
         - name: 食物名称（英文）
+        - nameCN: 食物名称（中文）
         - calories: 估算热量（kcal，整数）
         - carbs: 碳水化合物（克，整数）
         - protein: 蛋白质（克，整数）
         - fat: 脂肪（克，整数）
         
         只返回 JSON，不要其他文字。示例格式：
-        {"name": "Coffee", "calories": 5, "carbs": 1, "protein": 0, "fat": 0}
+        {"name": "Coffee", "nameCN": "咖啡", "calories": 5, "carbs": 1, "protein": 0, "fat": 0}
         
         如果无法识别或图片中没有食物，返回：
-        {"name": "Unknown", "calories": 0, "carbs": 0, "protein": 0, "fat": 0}
+        {"name": "Unknown", "nameCN": "未知", "calories": 0, "carbs": 0, "protein": 0, "fat": 0}
         """
         
         let body: [String: Any] = [
@@ -181,6 +195,7 @@ final class FoodRecognitionService {
         
         // Extract values with defaults
         let name = foodInfo["name"] as? String ?? "Unknown"
+        let nameCN = foodInfo["nameCN"] as? String ?? ""
         let calories = (foodInfo["calories"] as? Int) ?? Int(foodInfo["calories"] as? Double ?? 0)
         let carbs = (foodInfo["carbs"] as? Int) ?? Int(foodInfo["carbs"] as? Double ?? 0)
         let protein = (foodInfo["protein"] as? Int) ?? Int(foodInfo["protein"] as? Double ?? 0)
@@ -188,6 +203,7 @@ final class FoodRecognitionService {
         
         return FoodRecognitionResponse(
             name: name,
+            nameCN: nameCN,
             calories: calories,
             carbs: carbs,
             protein: protein,

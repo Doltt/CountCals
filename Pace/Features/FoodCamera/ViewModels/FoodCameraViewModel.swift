@@ -114,7 +114,7 @@ struct FoodRecognitionResult: Equatable {
         status: RecognitionStatus = .success
     ) -> FoodRecognitionResult {
         FoodRecognitionResult(
-            name: response.name,
+            name: response.localizedName,  // Use localized name
             calories: response.calories,
             carbs: response.carbs,
             protein: response.protein,
@@ -183,7 +183,7 @@ final class FoodCameraViewModel {
         Task {
             // Extract cutout and outline in parallel
             async let cutoutTask = cutoutService.extractForeground(from: image)
-            async let outlineTask = cutoutService.generateStickerOutline(from: image, outlineWidth: 12)
+            async let outlineTask = cutoutService.generateStickerOutline(from: image, outlineWidth: 28)
             
             let (cutout, outline) = await (cutoutTask, outlineTask)
 
@@ -229,7 +229,8 @@ final class FoodCameraViewModel {
         if status == .success {
             // Check if API returned "Unknown" or generic responses
             let lowercaseName = response.name.lowercased()
-            if lowercaseName == "unknown" || lowercaseName == "unknown food" {
+            let lowercaseNameCN = response.nameCN.lowercased()
+            if lowercaseName == "unknown" || lowercaseName == "unknown food" || lowercaseNameCN == "未知" || lowercaseNameCN == "未知食物" {
                 finalStatus = .mystery
             } else if response.calories == 0 && (lowercaseName.contains("object") || lowercaseName.contains("item")) {
                 finalStatus = .notFood
@@ -350,13 +351,20 @@ final class FoodCameraViewModel {
     func createFoodEntry() -> FoodEntry? {
         guard let result = recognitionResult else { return nil }
         
+        // Save cutout image as PNG data (preserves transparency)
+        var imageData: Data? = nil
+        if let cutout = result.cutoutImage {
+            imageData = cutout.pngData()
+        }
+        
         return FoodEntry(
             name: result.name,
             calories: result.calories,
             carbs: result.carbs,
             protein: result.protein,
             fat: result.fat,
-            portion: "1 serving"
+            portion: "1 serving",
+            cutoutImageData: imageData
         )
     }
 }

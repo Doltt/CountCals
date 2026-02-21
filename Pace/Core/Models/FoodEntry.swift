@@ -5,6 +5,7 @@
 
 import Foundation
 import SwiftData
+import UIKit
 
 @Model
 final class FoodEntry {
@@ -16,6 +17,7 @@ final class FoodEntry {
     var fat: Int = 0        // grams (default for migration)
     var portion: String
     var timestamp: Date
+    var cutoutImageData: Data?  // Sticker image data (PNG with transparency)
     
     init(
         name: String,
@@ -24,7 +26,8 @@ final class FoodEntry {
         protein: Int = 0,
         fat: Int = 0,
         portion: String,
-        timestamp: Date = .now
+        timestamp: Date = .now,
+        cutoutImageData: Data? = nil
     ) {
         self.id = UUID()
         self.name = name
@@ -34,6 +37,13 @@ final class FoodEntry {
         self.fat = fat
         self.portion = portion
         self.timestamp = timestamp
+        self.cutoutImageData = cutoutImageData
+    }
+    
+    /// Get cutout image from saved data
+    var cutoutImage: UIImage? {
+        guard let data = cutoutImageData else { return nil }
+        return UIImage(data: data)
     }
 }
 

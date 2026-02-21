@@ -56,6 +56,8 @@ struct FoodStickerResultView: View {
                             .offset(x: 20, y: -20)
                     }
                 }
+                .frame(minHeight: stickerMaxHeight * 0.8)
+                .layoutPriority(1)
                 .sensoryFeedback(.success, trigger: showingSaveSuccess)
                 .alert(AppSettingsManager.shared.localized(.saved), isPresented: $showingSaveSuccess) {
                     Button(AppSettingsManager.shared.localized(.ok)) {}
@@ -113,6 +115,14 @@ struct FoodStickerResultView: View {
 
     // MARK: - Sticker Image
 
+    // Dynamic sticker size based on screen width (85% of screen width, max 500pt)
+    private var stickerMaxWidth: CGFloat {
+        min(UIScreen.main.bounds.width * 0.85, 500)
+    }
+    private var stickerMaxHeight: CGFloat {
+        stickerMaxWidth * 1.2
+    }
+    
     @ViewBuilder
     private var stickerImageView: some View {
         if let cutout = result.cutoutImage {
@@ -120,15 +130,15 @@ struct FoodStickerResultView: View {
             StickerImageView(
                 cutoutImage: cutout,
                 outlineImage: result.outlineImage,
-                maxWidth: 220,
-                maxHeight: 260
+                maxWidth: stickerMaxWidth,
+                maxHeight: stickerMaxHeight
             )
         } else {
             // Fallback to original image with rounded corners
             Image(uiImage: result.originalImage)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(maxWidth: 220, maxHeight: 260)
+                .frame(maxWidth: stickerMaxWidth, maxHeight: stickerMaxHeight)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: .black.opacity(0.15), radius: 10, y: 5)
         }
@@ -341,8 +351,8 @@ struct FoodStickerResultView: View {
         let stickerView = StickerImageView(
             cutoutImage: cutout,
             outlineImage: result.outlineImage,
-            maxWidth: 440,
-            maxHeight: 520
+            maxWidth: 680,
+            maxHeight: 800
         )
         
         let renderer = ImageRenderer(content: stickerView)
