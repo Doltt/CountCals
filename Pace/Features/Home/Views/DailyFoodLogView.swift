@@ -23,11 +23,13 @@ struct DailyFoodLogView: View {
     
     // Detail view
     @State private var selectedEntry: FoodEntry? = nil
-    @State private var showDetail = false
     
     // Delete confirmation
     @State private var entryToDelete: FoodEntry? = nil
     @State private var showDeleteConfirmation = false
+    
+    // Navigation path
+    @State private var navigationPath = NavigationPath()
     
     init() {
         _allEntries = Query(sort: \FoodEntry.timestamp, order: .reverse)
@@ -116,45 +118,48 @@ struct DailyFoodLogView: View {
     }
     
     var body: some View {
-        ZStack {
-            Color(.systemBackground).ignoresSafeArea()
-            
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Date Header
-                    dateHeader
-                        .padding(.top, 60)
-                    
-                    // Week Calendar with swipe
-                    weekCalendarWithSwipe
-                    
-                    // Remaining Section
-                    remainingSection
-                    
-                    // Food Log Section
-                    foodLogSection
+        NavigationStack(path: $navigationPath) {
+            ZStack {
+                Color(.systemBackground).ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Date Header
+                        dateHeader
+                            .padding(.top, 20)
+                        
+                        // Week Calendar with swipe
+                        weekCalendarWithSwipe
+                        
+                        // Remaining Section
+                        remainingSection
+                        
+                        // Food Log Section
+                        foodLogSection
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 100)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 100)
             }
-        }
-        .sheet(isPresented: $showDetail) {
-            if let entry = selectedEntry {
-                FoodDetailSheet(entry: entry)
+            .navigationDestination(for: FoodEntry.self) { entry in
+                FoodDetailPage(entry: entry, onDelete: { entryToDelete in
+                    self.entryToDelete = entryToDelete
+                    self.showDeleteConfirmation = true
+                })
             }
-        }
-        .alert(settings.localized(.deleteConfirmation), isPresented: $showDeleteConfirmation) {
-            Button(settings.localized(.cancel), role: .cancel) {
-                entryToDelete = nil
-            }
-            Button(settings.localized(.delete), role: .destructive) {
-                if let entry = entryToDelete {
-                    deleteEntry(entry)
+            .alert(settings.localized(.deleteConfirmation), isPresented: $showDeleteConfirmation) {
+                Button(settings.localized(.cancel), role: .cancel) {
+                    entryToDelete = nil
                 }
-                entryToDelete = nil
+                Button(settings.localized(.delete), role: .destructive) {
+                    if let entry = entryToDelete {
+                        deleteEntry(entry)
+                    }
+                    entryToDelete = nil
+                }
+            } message: {
+                Text(settings.localized(.deleteConfirmationMessage))
             }
-        } message: {
-            Text(settings.localized(.deleteConfirmationMessage))
         }
     }
     
@@ -370,19 +375,18 @@ struct DailyFoodLogView: View {
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(selectedDateEntries) { entry in
-                        FoodLogCard(entry: entry)
-                            .onTapGesture {
-                                selectedEntry = entry
-                                showDetail = true
+                        NavigationLink(value: entry) {
+                            FoodLogCard(entry: entry)
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                entryToDelete = entry
+                                showDeleteConfirmation = true
+                            } label: {
+                                Label(settings.localized(.delete), systemImage: "trash")
                             }
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    entryToDelete = entry
-                                    showDeleteConfirmation = true
-                                } label: {
-                                    Label(settings.localized(.delete), systemImage: "trash")
-                                }
-                            }
+                        }
                     }
                 }
             }
@@ -576,6 +580,12 @@ struct FoodDetailSheet: View {
                             isEditing = false
                         }
                         .font(.paceRounded(.body))
+                    } else {
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
+                                .font(.paceRounded(.body, weight: .semibold))
+                                .foregroundStyle(.primary)
+                        }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -758,6 +768,280 @@ struct FoodDetailSheet: View {
         entry.fat = fat
         
         // Save context
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to save entry: \(error)")
+        }
+        modelContext.autosaveEnabled = true
+        
+        isEditing = false
+    }
+    
+    private var formattedTime: String {
+        let formatter = DateFormatter()
+        formatter.locale = settings.language == .chinese ? Locale(identifier: "zh_CN") : Locale(identifier: "en_US")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: entry.timestamp)
+    }
+    
+    private func nutritionItem(icon: String, value: String, unit: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.paceRounded(size: 24))
+                .foregroundColor(color)
+            
+            HStack(alignment: .lastTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.paceRounded(size: 32, weight: .black))
+                    .foregroundColor(textColor)
+                Text(unit)
+                    .font(.paceRounded(size: 14))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+// MARK: - Food Detail Page (Navigation)
+
+struct FoodDetailPage: View {
+    let entry: FoodEntry
+    let onDelete: (FoodEntry) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var loadedImage: UIImage? = nil
+    @State private var isEditing = false
+    
+    // Edit form states
+    @State private var editName: String = ""
+    @State private var editPortion: String = ""
+    @State private var editCalories: String = ""
+    @State private var editProtein: String = ""
+    @State private var editFat: String = ""
+    
+    private var settings: AppSettingsManager { AppSettingsManager.shared }
+    
+    private var textColor: Color {
+        colorScheme == .dark
+            ? Color(red: 0.996, green: 0.976, blue: 0.937)
+            : Color.primary
+    }
+    
+    var body: some View {
+        ZStack {
+            Color(.systemBackground).ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    if isEditing {
+                        editForm
+                    } else {
+                        detailContent
+                    }
+                }
+                .padding()
+                .frame(minHeight: UIScreen.main.bounds.height - 100)
+            }
+        }
+        .navigationTitle(isEditing ? settings.localized(.editFood) : settings.localized(.foodInfo))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                if isEditing {
+                    Button(settings.localized(.cancel)) {
+                        isEditing = false
+                    }
+                    .font(.paceRounded(.body))
+                }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                if isEditing {
+                    Button(settings.localized(.save)) {
+                        saveChanges()
+                    }
+                    .font(.paceRounded(.body, weight: .semibold))
+                } else {
+                    HStack(spacing: 16) {
+                        Button(role: .destructive) {
+                            onDelete(entry)
+                            dismiss()
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.paceRounded(.body, weight: .semibold))
+                                .foregroundStyle(.red)
+                        }
+                        
+                        Button(settings.localized(.edit)) {
+                            startEditing()
+                        }
+                        .font(.paceRounded(.body))
+                    }
+                }
+            }
+        }
+        .onAppear {
+            DispatchQueue.global(qos: .userInitiated).async {
+                if let image = entry.cutoutImage {
+                    DispatchQueue.main.async {
+                        self.loadedImage = image
+                    }
+                }
+            }
+        }
+    }
+    
+    private var detailContent: some View {
+        VStack(spacing: 24) {
+            // Sticker Image
+            if let image = loadedImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 450, maxHeight: 520)
+                    .shadow(color: Color(.label).opacity(0.15), radius: 12, y: 6)
+            } else if entry.cutoutImageData == nil {
+                Text(entry.emoji)
+                    .font(.system(size: 120))
+            } else {
+                ProgressView()
+                    .frame(width: 250, height: 250)
+            }
+            
+            // Food Name
+            Text(entry.name)
+                .font(.paceRounded(size: 28, weight: .black))
+                .foregroundColor(textColor)
+            
+            // Nutrition Info
+            HStack(spacing: 32) {
+                nutritionItem(
+                    icon: "flame.fill",
+                    value: "\(entry.calories)",
+                    unit: "Cal",
+                    color: Color(red: 1, green: 0.267, blue: 0)
+                )
+                
+                nutritionItem(
+                    icon: "leaf.fill",
+                    value: "\(entry.protein)",
+                    unit: "g",
+                    color: Color(red: 0.2, green: 0.68, blue: 0.38)
+                )
+                
+                nutritionItem(
+                    icon: "drop.fill",
+                    value: "\(entry.fat)",
+                    unit: "g",
+                    color: Color(red: 0.996, green: 0.56, blue: 0.66)
+                )
+            }
+            
+            // Portion
+            HStack {
+                Text(settings.localized(.portion))
+                    .font(.paceRounded(size: 16))
+                    .foregroundColor(.secondary)
+                Text(entry.portion)
+                    .font(.paceRounded(size: 16, weight: .semibold))
+                    .foregroundColor(textColor)
+            }
+            .padding(.top, 8)
+            
+            // Timestamp
+            Text(formattedTime)
+                .font(.paceRounded(size: 14))
+                .foregroundColor(.secondary)
+                .padding(.top, 16)
+        }
+    }
+    
+    private var editForm: some View {
+        VStack(spacing: 20) {
+            // Name field
+            VStack(alignment: .leading, spacing: 8) {
+                Text(settings.localized(.name))
+                    .font(.paceRounded(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                TextField(settings.localized(.foodNamePlaceholder), text: $editName)
+                    .font(.paceRounded(.body))
+                    .textFieldStyle(.roundedBorder)
+            }
+            
+            // Portion field
+            VStack(alignment: .leading, spacing: 8) {
+                Text(settings.localized(.portion))
+                    .font(.paceRounded(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                TextField("e.g. 1 bowl", text: $editPortion)
+                    .font(.paceRounded(.body))
+                    .textFieldStyle(.roundedBorder)
+            }
+            
+            // Nutrition fields
+            VStack(alignment: .leading, spacing: 8) {
+                Text(settings.localized(.nutrition))
+                    .font(.paceRounded(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 12) {
+                    nutritionTextField(title: settings.localized(.calories), value: $editCalories, unit: "")
+                    nutritionTextField(title: settings.localized(.proteinLabel), value: $editProtein, unit: "g")
+                    nutritionTextField(title: settings.localized(.fatLabel), value: $editFat, unit: "g")
+                }
+            }
+            
+            Spacer()
+        }
+    }
+    
+    private func nutritionTextField(title: String, value: Binding<String>, unit: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.paceRounded(size: 12))
+                .foregroundColor(.secondary)
+            HStack(spacing: 4) {
+                TextField("0", text: value)
+                    .font(.paceRounded(.body))
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.numberPad)
+                if !unit.isEmpty {
+                    Text(unit)
+                        .font(.paceRounded(size: 12))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    private func startEditing() {
+        editName = entry.name
+        editPortion = entry.portion
+        editCalories = String(entry.calories)
+        editProtein = String(entry.protein)
+        editFat = String(entry.fat)
+        isEditing = true
+    }
+    
+    private func saveChanges() {
+        guard let calories = Int(editCalories),
+              let protein = Int(editProtein),
+              let fat = Int(editFat),
+              !editName.isEmpty else {
+            isEditing = false
+            return
+        }
+        
+        modelContext.autosaveEnabled = false
+        entry.name = editName
+        entry.portion = editPortion
+        entry.calories = calories
+        entry.protein = protein
+        entry.fat = fat
+        
         do {
             try modelContext.save()
         } catch {

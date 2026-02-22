@@ -79,10 +79,38 @@ App (ContentView)
 2. 检查模块的文档 (Docs/*.md) 了解数据流
 3. 修改后必须构建验证
 
-### 3. 构建验证
-```bash
-xcodebuild -project Pace.xcodeproj -scheme Pace -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' build
+### 3. 构建与部署（强制）
+
+**任何代码修改后，必须执行完整的「构建+部署」流程，而不仅仅是构建验证。**
+
+#### 完整流程
 ```
+修改代码 → 构建 → 部署到设备 → 启动应用
+```
+
+#### 步骤
+```bash
+# 1. 获取设备 ID
+xcrun devicectl list devices
+
+# 2. 编译（真机）
+xcodebuild -project Pace.xcodeproj -scheme Pace -destination "platform=iOS,id=DEVICE_ID" build
+
+# 3. 安装
+xcrun devicectl device install app --device "DEVICE_UUID" \
+  ~/Library/Developer/Xcode/DerivedData/Pace-*/Build/Products/Debug-iphoneos/Pace.app
+
+# 4. 启动
+xcrun devicectl device process launch --device "DEVICE_UUID" com.tree.Pace
+```
+
+#### 检查清单（必须完成）
+- [ ] 代码修改完成
+- [ ] 编译成功 (BUILD SUCCEEDED)
+- [ ] 安装成功 (App installed)
+- [ ] 应用启动 (Launched application)
+
+**⚠️ 禁止只构建不部署。构建成功但未到设备上验证，任务不算完成。**
 
 ## 颜色规范
 ```swift

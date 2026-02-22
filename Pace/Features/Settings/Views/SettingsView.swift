@@ -11,38 +11,22 @@ struct SettingsView: View {
     @State private var settings = AppSettingsManager.shared
     @State private var showingLanguagePicker = false
     @State private var showingThemePicker = false
-    @State private var showingBodyData = false
     @State private var showingOnboarding = false
-    @State private var viewModel: DashboardViewModel?
+    @State private var showingBodyData = false
+    @State private var viewModel = DashboardViewModel()
     
     private func L(_ key: LocalizedKey) -> String {
         settings.localized(key)
     }
     
     var body: some View {
-        Group {
-            if let viewModel {
-                settingsContent(viewModel: viewModel)
-            } else {
-                Color(.systemBackground)
-            }
-        }
-        .task {
-            if viewModel == nil {
-                viewModel = DashboardViewModel()
-            }
-        }
-    }
-    
-    @ViewBuilder
-    private func settingsContent(viewModel: DashboardViewModel) -> some View {
         ScrollView {
             VStack(spacing: 24) {
                 // Welcome Header
                 welcomeSection
                 
                 // Body Data Section
-                bodyDataSection(viewModel: viewModel)
+                bodyDataSection
                 
                 // Appearance Section
                 appearanceSection
@@ -76,8 +60,7 @@ struct SettingsView: View {
     
     // MARK: - Body Data Section
     
-    @ViewBuilder
-    private func bodyDataSection(viewModel: DashboardViewModel) -> some View {
+    private var bodyDataSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L(.healthProfile))
                 .font(.paceRounded(.subheadline))
@@ -85,15 +68,39 @@ struct SettingsView: View {
                 .padding(.leading, 4)
             
             VStack(spacing: 0) {
-                SettingsRow(
-                    icon: "figure.walk",
-                    iconColor: .green,
-                    title: L(.bodyData),
-                    subtitle: L(.bodyDataSubtitle),
-                    value: "\(viewModel.userProfile.weight)kg, \(viewModel.userProfile.height)cm"
-                ) {
+                Button {
                     showingBodyData = true
+                } label: {
+                    HStack {
+                        Image(systemName: "figure.walk")
+                            .font(.paceRounded(.title3))
+                            .foregroundStyle(.green)
+                            .frame(width: 32)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L(.bodyData))
+                                .font(.paceRounded(.body))
+                                .foregroundStyle(.primary)
+                            
+                            Text(L(.bodyDataSubtitle))
+                                .font(.paceRounded(.caption))
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Text("\(viewModel.userProfile.weight)kg, \(viewModel.userProfile.height)cm")
+                            .font(.paceRounded(.body))
+                            .foregroundStyle(.secondary)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.paceRounded(.caption))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .padding()
                 }
+                .buttonStyle(.plain)
             }
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         }
@@ -112,7 +119,7 @@ struct SettingsView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 20)
+        .padding(.top, 8)
     }
     
     
@@ -126,14 +133,35 @@ struct SettingsView: View {
                 .padding(.leading, 4)
             
             VStack(spacing: 0) {
-                SettingsRow(
-                    icon: "sparkles",
-                    iconColor: Color(red: 1, green: 0.267, blue: 0),
-                    title: L(.viewOnboarding),
-                    subtitle: L(.viewOnboardingSubtitle)
-                ) {
+                Button {
                     showingOnboarding = true
+                } label: {
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .font(.paceRounded(.title3))
+                            .foregroundStyle(Color(red: 1, green: 0.267, blue: 0))
+                            .frame(width: 32)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L(.viewOnboarding))
+                                .font(.paceRounded(.body))
+                                .foregroundStyle(.primary)
+                            
+                            Text(L(.viewOnboardingSubtitle))
+                                .font(.paceRounded(.caption))
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.paceRounded(.caption))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .padding()
                 }
+                .buttonStyle(.plain)
             }
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         }
@@ -149,28 +177,76 @@ struct SettingsView: View {
                 .padding(.leading, 4)
             
             VStack(spacing: 0) {
-                SettingsRow(
-                    icon: "globe",
-                    iconColor: .blue,
-                    title: L(.language),
-                    subtitle: L(.languageSubtitle),
-                    value: settings.language.displayName
-                ) {
+                Button {
                     showingLanguagePicker = true
+                } label: {
+                    HStack {
+                        Image(systemName: "globe")
+                            .font(.paceRounded(.title3))
+                            .foregroundStyle(.blue)
+                            .frame(width: 32)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L(.language))
+                                .font(.paceRounded(.body))
+                                .foregroundStyle(.primary)
+                            
+                            Text(L(.languageSubtitle))
+                                .font(.paceRounded(.caption))
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Text(settings.language.displayName)
+                            .font(.paceRounded(.body))
+                            .foregroundStyle(.secondary)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.paceRounded(.caption))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .padding()
                 }
+                .buttonStyle(.plain)
                 
                 Divider()
                     .padding(.leading, 52)
                 
-                SettingsRow(
-                    icon: settings.theme.icon,
-                    iconColor: .orange,
-                    title: L(.theme),
-                    subtitle: L(.themeSubtitle),
-                    value: settings.language == .chinese ? settings.theme.displayNameCN : settings.theme.displayName
-                ) {
+                Button {
                     showingThemePicker = true
+                } label: {
+                    HStack {
+                        Image(systemName: settings.theme.icon)
+                            .font(.paceRounded(.title3))
+                            .foregroundStyle(.orange)
+                            .frame(width: 32)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L(.theme))
+                                .font(.paceRounded(.body))
+                                .foregroundStyle(.primary)
+                            
+                            Text(L(.themeSubtitle))
+                                .font(.paceRounded(.caption))
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Text(settings.language == .chinese ? settings.theme.displayNameCN : settings.theme.displayName)
+                            .font(.paceRounded(.body))
+                            .foregroundStyle(.secondary)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.paceRounded(.caption))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .padding()
                 }
+                .buttonStyle(.plain)
             }
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         }
@@ -186,14 +262,35 @@ struct SettingsView: View {
                 .padding(.leading, 4)
             
             VStack(spacing: 0) {
-                SettingsRow(
-                    icon: "bubble.left.and.bubble.right",
-                    iconColor: .green,
-                    title: L(.feedback),
-                    subtitle: L(.feedbackSubtitle)
-                ) {
+                Button {
                     openAppStoreFeedback()
+                } label: {
+                    HStack {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                            .font(.paceRounded(.title3))
+                            .foregroundStyle(.green)
+                            .frame(width: 32)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L(.feedback))
+                                .font(.paceRounded(.body))
+                                .foregroundStyle(.primary)
+                            
+                            Text(L(.feedbackSubtitle))
+                                .font(.paceRounded(.caption))
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.paceRounded(.caption))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .padding()
                 }
+                .buttonStyle(.plain)
                 
                 Divider()
                     .padding(.leading, 52)
@@ -295,11 +392,8 @@ private struct LanguagePickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        VStack(spacing: 0) {
-            Text(settings.localized(.language))
-                .font(.paceRounded(.headline, weight: .black))
-                .padding()
-            
+        NavigationStack {
+            VStack(spacing: 0) {
             VStack(spacing: 8) {
                 ForEach(AppLanguage.allCases, id: \.self) { language in
                     Button {
@@ -329,10 +423,13 @@ private struct LanguagePickerSheet: View {
                     }
                     .buttonStyle(.plain)
                 }
+                }
+                .padding()
+                
+                Spacer()
             }
-            .padding()
-            
-            Spacer()
+            .navigationTitle(settings.localized(.language))
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
@@ -350,11 +447,8 @@ private struct ThemePickerSheet: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            Text(settings.localized(.theme))
-                .font(.paceRounded(.headline, weight: .black))
-                .padding()
-            
+        NavigationStack {
+            VStack(spacing: 0) {
             VStack(spacing: 8) {
                 ForEach(AppTheme.allCases, id: \.self) { theme in
                     Button {
@@ -386,10 +480,13 @@ private struct ThemePickerSheet: View {
                     }
                     .buttonStyle(.plain)
                 }
+                }
+                .padding()
+                
+                Spacer()
             }
-            .padding()
-            
-            Spacer()
+            .navigationTitle(settings.localized(.theme))
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

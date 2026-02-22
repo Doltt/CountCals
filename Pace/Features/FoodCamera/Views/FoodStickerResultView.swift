@@ -493,6 +493,7 @@ struct FoodEditSheet: View {
     @Binding var fat: String
     let onSave: () -> Void
     let onCancel: () -> Void
+    @Environment(\.dismiss) private var dismiss
     private var settings: AppSettingsManager { AppSettingsManager.shared }
 
     var body: some View {
@@ -516,9 +517,15 @@ struct FoodEditSheet: View {
             .navigationTitle(settings.localized(.editFood))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(settings.localized(.cancel)) { onCancel() }
-                        .font(.paceRounded(.body))
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { 
+                        onCancel()
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.paceRounded(.body, weight: .semibold))
+                            .foregroundStyle(.primary)
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(settings.localized(.save)) { onSave() }

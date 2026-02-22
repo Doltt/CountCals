@@ -198,11 +198,8 @@ struct ActivityLevelPickerSheet: View {
     private var settings: AppSettingsManager { AppSettingsManager.shared }
     
     var body: some View {
-        VStack(spacing: 0) {
-            Text(settings.localized(.activityLevel))
-                .font(.paceRounded(.headline, weight: .black))
-                .padding()
-            
+        NavigationStack {
+            VStack(spacing: 0) {
             VStack(spacing: 8) {
                 ForEach(UserProfile.ActivityLevel.allCases, id: \.self) { level in
                     Button {
@@ -229,10 +226,13 @@ struct ActivityLevelPickerSheet: View {
                     }
                     .buttonStyle(.plain)
                 }
+                }
+                .padding()
+                
+                Spacer()
             }
-            .padding()
-            
-            Spacer()
+            .navigationTitle(settings.localized(.activityLevel))
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

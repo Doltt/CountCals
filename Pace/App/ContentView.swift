@@ -36,7 +36,7 @@ struct ContentView: View {
                 .tag(2)
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-        .ignoresSafeArea(edges: .bottom)
+        .ignoresSafeArea(edges: [.top, .bottom])
         .fullScreenCover(isPresented: $showingAddFood) {
             AddFoodView(onAddSuccess: {
                 // After adding food, jump to Daily Food Log

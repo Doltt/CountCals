@@ -94,10 +94,11 @@ struct ProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(settings.localized(.complete)) {
-                        saveProfile()
+                    Button(action: { saveProfile() }) {
+                        Image(systemName: "checkmark")
+                            .font(.paceRounded(.body, weight: .semibold))
+                            .foregroundStyle(.primary)
                     }
-                    .font(.paceRounded(.body, weight: .semibold))
                 }
             }
         }
@@ -539,6 +540,7 @@ private struct NumberInputSheet: View {
     @FocusState.Binding var isFocused: Bool
     let onConfirm: () -> Void
     let onCancel: () -> Void
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationStack {
@@ -559,9 +561,15 @@ private struct NumberInputSheet: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(AppSettingsManager.shared.localized(.cancel), action: onCancel)
-                        .font(.paceRounded(.body))
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { 
+                        onCancel()
+                        dismiss() 
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.paceRounded(.body, weight: .semibold))
+                            .foregroundStyle(.primary)
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(AppSettingsManager.shared.localized(.save)) {
