@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import ActivityKit
 
 struct HomeView: View {
     @Query private var allEntries: [FoodEntry]
@@ -69,6 +70,12 @@ struct HomeView: View {
             DispatchQueue.main.async {
                 hasAppeared = true
             }
+            // Start Live Activity on app launch
+            viewModel.startLiveActivity(from: allEntries)
+        }
+        .onChange(of: allEntries) { _, newEntries in
+            // Update Live Activity when food entries change
+            viewModel.updateLiveActivity(from: newEntries)
         }
         .sheet(isPresented: $showingProfile) {
             ProfileView(viewModel: viewModel)
@@ -89,15 +96,11 @@ struct HomeView: View {
     // MARK: - Colors
     
     private var textColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.996, green: 0.976, blue: 0.937)
-            : Color.primary
+        Color(.label)
     }
     
     private var secondaryTextColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.996, green: 0.976, blue: 0.937).opacity(0.5)
-            : Color.secondary
+        Color(.secondaryLabel)
     }
     
     // MARK: - Subviews
@@ -142,21 +145,29 @@ struct HomeView: View {
         let remainingFat = max(0, viewModel.dailyFat - viewModel.consumedFat(from: allEntries))
         
         return HStack(spacing: 24) {
-            statItem(icon: "flame.fill", value: "\(remainingCal)Cal", color: Color(red: 1, green: 0.267, blue: 0))
-            statItem(icon: "leaf.fill", value: "\(remainingProtein)g", color: Color(red: 0.2, green: 0.68, blue: 0.38))
-            statItem(icon: "drop.fill", value: "\(remainingFat)g", color: Color(red: 0.996, green: 0.56, blue: 0.66))
+            macroItem(icon: "flame.fill", value: "\(remainingCal)", unit: "kcal", color: Color(red: 1, green: 0.267, blue: 0))
+            macroItem(icon: "leaf.fill", value: "\(remainingProtein)", unit: "g", color: Color(red: 0.2, green: 0.68, blue: 0.38))
+            macroItem(icon: "drop.fill", value: "\(remainingFat)", unit: "g", color: Color(red: 0.996, green: 0.56, blue: 0.66))
         }
+        .padding(.horizontal, 40)
     }
     
-    private func statItem(icon: String, value: String, color: Color) -> some View {
-        HStack(spacing: 6) {
+    private func macroItem(icon: String, value: String, unit: String, color: Color) -> some View {
+        VStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.paceRounded(size: 14, weight: .semibold))
+                .font(.paceRounded(size: 20, weight: .semibold))
                 .foregroundColor(color)
-            Text(value)
-                .font(.paceRounded(size: 14, weight: .semibold))
-                .foregroundColor(textColor)
+            
+            HStack(alignment: .lastTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.paceRounded(size: 24, weight: .bold))
+                    .foregroundColor(Color(.label))
+                Text(unit)
+                    .font(.paceRounded(size: 12, weight: .medium))
+                    .foregroundColor(Color(.secondaryLabel))
+            }
         }
+        .frame(maxWidth: .infinity)
     }
     
     private var addFoodButton: some View {
@@ -164,20 +175,17 @@ struct HomeView: View {
             onAddFood()
         } label: {
             Text(settings.localized(.addFood))
-                .font(.paceRounded(size: 20, weight: .black))
+                .font(.paceRounded(size: 18, weight: .bold))
                 .foregroundColor(.white)
-                .frame(width: 200, height: 60)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
                 .background(
                     Capsule()
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                        )
+                        .fill(Color(red: 1, green: 0.267, blue: 0))
                 )
-                .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 40)
+        .padding(.bottom, 50)
     }
 }
 
@@ -258,17 +266,13 @@ struct DashboardRingsView: View {
         return min(1, CGFloat(consumedFat) / CGFloat(totalFat))
     }
     
+    // Brand colors (intentional design choice)
     private static let colorCalories = Color(red: 1, green: 0.267, blue: 0)
     private static let colorProtein = Color(red: 0.2, green: 0.68, blue: 0.38)
     private static let colorFat = Color(red: 0.996, green: 0.56, blue: 0.66)
-    private static let trackColorDark = Color.white.opacity(0.08)
-    private static let trackColorLight = Color.black.opacity(0.05)
     
-    @Environment(\.colorScheme) private var colorScheme
-    
-    private var trackColor: Color {
-        colorScheme == .dark ? Self.trackColorDark : Self.trackColorLight
-    }
+    // Track color using system semantic color
+    private static let trackColor = Color(.tertiarySystemFill)
     
     var body: some View {
         ZStack {
@@ -289,7 +293,7 @@ struct DashboardRingsView: View {
         let size = radius * 2
         return ZStack {
             Circle()
-                .stroke(trackColor, style: StrokeStyle(lineWidth: Self.ringLineWidth, lineCap: .round))
+                .stroke(Self.trackColor, style: StrokeStyle(lineWidth: Self.ringLineWidth, lineCap: .round))
                 .frame(width: size, height: size)
             Circle()
                 .trim(from: 0, to: progress)

@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SwiftData
+import ActivityKit
 
 /// Main container view for the food camera flow.
 /// Manages transitions between camera → preview → processing → result states.
@@ -155,11 +156,51 @@ struct FoodCameraView: View {
         modelContext.insert(entry)
         showSuccess = true
         onAddSuccess?()
+        
+        // Update Live Activity after adding food
+        updateLiveActivity()
 
         // Dismiss after showing success, then parent will switch to Food Log
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             dismiss()
         }
+    }
+    
+    private func updateLiveActivity() {
+        // Fetch all entries from model context to calculate remaining values
+        let descriptor = FetchDescriptor<FoodEntry>(
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        guard let allEntries = try? modelContext.fetch(descriptor) else { return }
+        
+        // Get user profile for daily targets
+        let userProfile = UserProfile.load()
+        let dailyCalories = userProfile.dailyCalories
+        
+        // Calculate consumed values
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let todaysEntries = allEntries.filter { 
+            calendar.startOfDay(for: $0.timestamp) == today 
+        }
+        
+        let consumedCalories = todaysEntries.reduce(0) { $0 + $1.calories }
+        let consumedCarbs = todaysEntries.reduce(0) { $0 + $1.carbs }
+        let consumedProtein = todaysEntries.reduce(0) { $0 + $1.protein }
+        let consumedFat = todaysEntries.reduce(0) { $0 + $1.fat }
+        
+        // Calculate daily macros
+        let dailyCarbs = Int(Double(dailyCalories) * 0.45 / 4.0)
+        let dailyProtein = Int(Double(dailyCalories) * 0.25 / 4.0)
+        let dailyFat = Int(Double(dailyCalories) * 0.30 / 9.0)
+        
+        // Update Live Activity
+        LiveActivityService.shared.update(
+            remainingCalories: dailyCalories - consumedCalories,
+            remainingCarbs: max(0, dailyCarbs - consumedCarbs),
+            remainingProtein: max(0, dailyProtein - consumedProtein),
+            remainingFat: max(0, dailyFat - consumedFat)
+        )
     }
 
     private func dismissWithAnimation() {

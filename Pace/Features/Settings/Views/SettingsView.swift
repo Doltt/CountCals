@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var showingLanguagePicker = false
     @State private var showingThemePicker = false
     @State private var showingBodyData = false
+    @State private var showingOnboarding = false
     @State private var viewModel = DashboardViewModel()
     
     private func L(_ key: LocalizedKey) -> String {
@@ -29,6 +30,9 @@ struct SettingsView: View {
                 
                 // Appearance Section
                 appearanceSection
+                
+                // Onboarding Section
+                onboardingSection
                 
                 // About Section
                 aboutSection
@@ -48,6 +52,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingBodyData) {
             ProfileView(viewModel: viewModel)
+        }
+        .fullScreenCover(isPresented: $showingOnboarding) {
+            OnboardingPreviewView()
         }
     }
     
@@ -91,6 +98,29 @@ struct SettingsView: View {
         .padding(.top, 20)
     }
     
+    
+    // MARK: - Onboarding Section
+    
+    private var onboardingSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L(.support))
+                .font(.paceRounded(.subheadline))
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
+            
+            VStack(spacing: 0) {
+                SettingsRow(
+                    icon: "sparkles",
+                    iconColor: Color(red: 1, green: 0.267, blue: 0),
+                    title: L(.viewOnboarding),
+                    subtitle: L(.viewOnboardingSubtitle)
+                ) {
+                    showingOnboarding = true
+                }
+            }
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
     
     // MARK: - Appearance Section
     

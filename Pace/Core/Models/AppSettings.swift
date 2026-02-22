@@ -85,6 +85,11 @@ final class AppSettingsManager {
         }
     }
     
+    var hasCompletedOnboarding: Bool {
+        get { UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") }
+        set { UserDefaults.standard.set(newValue, forKey: "hasCompletedOnboarding") }
+    }
+    
     private init() {
         let themeRaw = UserDefaults.standard.string(forKey: "appTheme") ?? AppTheme.system.rawValue
         self.theme = AppTheme(rawValue: themeRaw) ?? .system
@@ -233,6 +238,14 @@ enum LocalizedKey {
     case dailyFoodLog
     case noFoodToday
     case foodDetail
+    // Onboarding
+    case viewOnboarding
+    case viewOnboardingSubtitle
+    case deleteConfirmation
+    case deleteConfirmationMessage
+    case noFoodThisDay
+    case noFoodFuture
+    case consumed
 
     var en: String {
         switch self {
@@ -347,6 +360,14 @@ enum LocalizedKey {
         case .dailyFoodLog: return "Daily Food Log"
         case .noFoodToday: return "No food recorded today"
         case .foodDetail: return "Food Detail"
+        // Onboarding
+        case .viewOnboarding: return "View Onboarding"
+        case .viewOnboardingSubtitle: return "Preview the welcome guide"
+        case .deleteConfirmation: return "Delete Food"
+        case .deleteConfirmationMessage: return "Are you sure you want to delete this food record?"
+        case .noFoodThisDay: return "No food recorded on this day"
+        case .noFoodFuture: return "This day hasn't arrived yet"
+        case .consumed: return "Consumed"
         }
     }
 
@@ -463,6 +484,14 @@ enum LocalizedKey {
         case .dailyFoodLog: return "今日饮食记录"
         case .noFoodToday: return "今天还没有记录食物"
         case .foodDetail: return "食物详情"
+        // Onboarding
+        case .viewOnboarding: return "查看引导"
+        case .viewOnboardingSubtitle: return "预览欢迎指南"
+        case .deleteConfirmation: return "删除食物"
+        case .deleteConfirmationMessage: return "确定要删除这条食物记录吗？"
+        case .noFoodThisDay: return "这一天没有记录"
+        case .noFoodFuture: return "还没有到这一天"
+        case .consumed: return "已摄入"
         }
     }
 }

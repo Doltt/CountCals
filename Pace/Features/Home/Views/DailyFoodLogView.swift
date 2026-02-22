@@ -25,6 +25,10 @@ struct DailyFoodLogView: View {
     @State private var selectedEntry: FoodEntry? = nil
     @State private var showDetail = false
     
+    // Delete confirmation
+    @State private var entryToDelete: FoodEntry? = nil
+    @State private var showDeleteConfirmation = false
+    
     init() {
         _allEntries = Query(sort: \FoodEntry.timestamp, order: .reverse)
     }
@@ -51,6 +55,18 @@ struct DailyFoodLogView: View {
     
     private var isSelectedToday: Bool {
         calendar.isDate(selectedDate, inSameDayAs: Date())
+    }
+    
+    private var isSelectedPast: Bool {
+        selectedDate < calendar.startOfDay(for: Date())
+    }
+    
+    private var isSelectedFuture: Bool {
+        selectedDate > calendar.startOfDay(for: Date())
+    }
+    
+    private var selectedWeekday: Int {
+        calendar.component(.weekday, from: selectedDate)
     }
     
     private var selectedDateEntries: [FoodEntry] {
@@ -86,6 +102,19 @@ struct DailyFoodLogView: View {
         return min(1.0, Double(totalFat) / Double(viewModel.dailyFat))
     }
     
+    // Remaining calculations
+    private var remainingCalories: Int {
+        max(0, viewModel.dailyCalories - totalCalories)
+    }
+    
+    private var remainingProtein: Int {
+        max(0, viewModel.dailyProtein - totalProtein)
+    }
+    
+    private var remainingFat: Int {
+        max(0, viewModel.dailyFat - totalFat)
+    }
+    
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
@@ -114,26 +143,33 @@ struct DailyFoodLogView: View {
                 FoodDetailSheet(entry: entry)
             }
         }
+        .alert(settings.localized(.deleteConfirmation), isPresented: $showDeleteConfirmation) {
+            Button(settings.localized(.cancel), role: .cancel) {
+                entryToDelete = nil
+            }
+            Button(settings.localized(.delete), role: .destructive) {
+                if let entry = entryToDelete {
+                    deleteEntry(entry)
+                }
+                entryToDelete = nil
+            }
+        } message: {
+            Text(settings.localized(.deleteConfirmationMessage))
+        }
     }
     
     // MARK: - Colors
     
     private var textColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.996, green: 0.976, blue: 0.937)
-            : Color.primary
+        Color(.label)
     }
     
     private var secondaryTextColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.996, green: 0.976, blue: 0.937).opacity(0.5)
-            : Color.secondary
+        Color(.secondaryLabel)
     }
     
     private var cardBackgroundColor: Color {
-        colorScheme == .dark
-            ? Color(.secondarySystemBackground)
-            : Color(.secondarySystemBackground)
+        Color(.secondarySystemBackground)
     }
     
     // MARK: - Subviews
@@ -150,7 +186,8 @@ struct DailyFoodLogView: View {
     private var formattedDateHeader: String {
         let formatter = DateFormatter()
         formatter.locale = settings.language == .chinese ? Locale(identifier: "zh_CN") : Locale(identifier: "en_US")
-        formatter.dateFormat = "MMM d"
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
         let dateStr = formatter.string(from: selectedDate)
         if isSelectedToday {
             return settings.language == .chinese ? "\(dateStr)，今天" : "\(dateStr), Today"
@@ -199,61 +236,80 @@ struct DailyFoodLogView: View {
                         // Swipe left - go to next week
                         withAnimation(.spring(response: 0.4)) {
                             weekOffset += 1
-                            // Select first day of new week
-                            if let firstDay = weekDays.first {
-                                selectedDate = firstDay
-                            }
+                            // Keep the same weekday in the new week
+                            selectDateWithSameWeekday()
                         }
                     } else if value.translation.width > threshold {
                         // Swipe right - go to previous week
                         withAnimation(.spring(response: 0.4)) {
                             weekOffset -= 1
-                            // Select first day of new week
-                            if let firstDay = weekDays.first {
-                                selectedDate = firstDay
-                            }
+                            // Keep the same weekday in the new week
+                            selectDateWithSameWeekday()
                         }
                     }
                 }
         )
     }
     
+    private func selectDateWithSameWeekday() {
+        // Get the new week's start date
+        let today = calendar.startOfDay(for: Date())
+        let weekday = calendar.component(.weekday, from: today)
+        guard let currentWeekStart = calendar.date(byAdding: .day, value: -(weekday - 1), to: today) else { return }
+        guard let targetWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentWeekStart) else { return }
+        
+        // Select the same weekday in the new week
+        let targetWeekday = selectedWeekday
+        guard let newDate = calendar.date(byAdding: .day, value: targetWeekday - 1, to: targetWeekStart) else { return }
+        selectedDate = newDate
+    }
+    
     private func dayLetter(for date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "E"
         formatter.locale = settings.language == .chinese ? Locale(identifier: "zh_CN") : Locale(identifier: "en_US")
-        let dayString = formatter.string(from: date)
-        // Return first letter/capital
-        return String(dayString.prefix(1)).uppercased()
+        
+        if settings.language == .chinese {
+            // Chinese: use single character for weekday (日/一/二/三/四/五/六)
+            let weekday = calendar.component(.weekday, from: date)
+            let chineseWeekdays = ["日", "一", "二", "三", "四", "五", "六"]
+            return chineseWeekdays[weekday - 1]
+        } else {
+            // English: use short weekday name (Sun/Mon/Tue)
+            formatter.dateFormat = "EEE"
+            return formatter.string(from: date)
+        }
     }
     
     private var remainingSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(settings.localized(.remaining))
+            Text(settings.localized(.consumed))
                 .font(.paceRounded(size: 20, weight: .bold))
                 .foregroundColor(textColor)
             
             HStack(spacing: 12) {
                 nutritionBar(
                     label: settings.localized(.calories),
-                    value: "\(totalCalories)Cal",
-                    percentage: Int(caloriesProgress * 100),
+                    value: "\(totalCalories)",
+                    unit: "Cal",
+                    remainingValue: remainingCalories,
                     color: Color(red: 1, green: 0.267, blue: 0),
                     progress: caloriesProgress
                 )
                 
                 nutritionBar(
                     label: settings.localized(.proteinLabel),
-                    value: "\(totalProtein)g",
-                    percentage: Int(proteinProgress * 100),
+                    value: "\(totalProtein)",
+                    unit: "g",
+                    remainingValue: remainingProtein,
                     color: Color(red: 0.2, green: 0.68, blue: 0.38),
                     progress: proteinProgress
                 )
                 
                 nutritionBar(
                     label: settings.localized(.fatLabel),
-                    value: "\(totalFat)g",
-                    percentage: Int(fatProgress * 100),
+                    value: "\(totalFat)",
+                    unit: "g",
+                    remainingValue: remainingFat,
                     color: Color(red: 0.996, green: 0.56, blue: 0.66),
                     progress: fatProgress
                 )
@@ -266,17 +322,22 @@ struct DailyFoodLogView: View {
         )
     }
     
-    private func nutritionBar(label: String, value: String, percentage: Int, color: Color, progress: Double) -> some View {
+    private func nutritionBar(label: String, value: String, unit: String, remainingValue: Int, color: Color, progress: Double) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
                 .font(.paceRounded(size: 12, weight: .medium))
                 .foregroundColor(color)
             
-            Text(value)
-                .font(.paceRounded(size: 16, weight: .bold))
-                .foregroundColor(textColor)
+            HStack(alignment: .lastTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.paceRounded(size: 16, weight: .bold))
+                    .foregroundColor(textColor)
+                Text(unit)
+                    .font(.paceRounded(size: 11))
+                    .foregroundColor(secondaryTextColor)
+            }
             
-            Text("\(percentage)%")
+            Text("\(settings.localized(.remaining)): \(remainingValue)")
                 .font(.paceRounded(size: 11))
                 .foregroundColor(secondaryTextColor)
             
@@ -316,7 +377,8 @@ struct DailyFoodLogView: View {
                             }
                             .contextMenu {
                                 Button(role: .destructive) {
-                                    deleteEntry(entry)
+                                    entryToDelete = entry
+                                    showDeleteConfirmation = true
                                 } label: {
                                     Label(settings.localized(.delete), systemImage: "trash")
                                 }
@@ -333,13 +395,23 @@ struct DailyFoodLogView: View {
                 .font(.system(size: 50))
                 .foregroundColor(secondaryTextColor.opacity(0.5))
             
-            Text(settings.localized(.noFoodToday))
+            Text(emptyStateMessage)
                 .font(.paceRounded(size: 15, weight: .medium))
                 .foregroundColor(secondaryTextColor)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
+    }
+    
+    private var emptyStateMessage: String {
+        if isSelectedToday {
+            return settings.localized(.noFoodToday)
+        } else if isSelectedPast {
+            return settings.localized(.noFoodThisDay)
+        } else {
+            return settings.localized(.noFoodFuture)
+        }
     }
     
     private func deleteEntry(_ entry: FoodEntry) {
@@ -360,9 +432,7 @@ struct FoodLogCard: View {
     }
     
     private var textColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.996, green: 0.976, blue: 0.937)
-            : Color.primary
+        Color(.label)
     }
     
     var body: some View {
@@ -374,7 +444,7 @@ struct FoodLogCard: View {
                 // Fallback to emoji
                 ZStack {
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.gray.opacity(0.2))
+                        .fill(Color(.tertiarySystemFill))
                     
                     Text(entry.emoji)
                         .font(.system(size: 50))
@@ -460,8 +530,18 @@ struct StickerThumbnail: View {
 struct FoodDetailSheet: View {
     let entry: FoodEntry
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @State private var loadedImage: UIImage? = nil
+    @State private var isEditing = false
+    
+    // Edit form states
+    @State private var editName: String = ""
+    @State private var editPortion: String = ""
+    @State private var editCalories: String = ""
+    @State private var editProtein: String = ""
+    @State private var editFat: String = ""
+    
     private var settings: AppSettingsManager { AppSettingsManager.shared }
     
     private var textColor: Color {
@@ -474,77 +554,37 @@ struct FoodDetailSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Sticker Image (使用预加载的缓存图片)
-                    if let image = loadedImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: 450, maxHeight: 520)
-                            .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
-                    } else if entry.cutoutImageData == nil {
-                        // 没有图片数据，直接显示 emoji
-                        Text(entry.emoji)
-                            .font(.system(size: 120))
+                    if isEditing {
+                        editForm
                     } else {
-                        // 图片加载中
-                        ProgressView()
-                            .frame(width: 250, height: 250)
+                        detailContent
                     }
-                    
-                    // Food Name
-                    Text(entry.name)
-                        .font(.paceRounded(size: 28, weight: .black))
-                        .foregroundColor(textColor)
-                    
-                    // Nutrition Info
-                    HStack(spacing: 32) {
-                        nutritionItem(
-                            icon: "flame.fill",
-                            value: "\(entry.calories)",
-                            unit: "Cal",
-                            color: Color(red: 1, green: 0.267, blue: 0)
-                        )
-                        
-                        nutritionItem(
-                            icon: "leaf.fill",
-                            value: "\(entry.protein)",
-                            unit: "g",
-                            color: Color(red: 0.2, green: 0.68, blue: 0.38)
-                        )
-                        
-                        nutritionItem(
-                            icon: "drop.fill",
-                            value: "\(entry.fat)",
-                            unit: "g",
-                            color: Color(red: 0.996, green: 0.56, blue: 0.66)
-                        )
-                    }
-                    
-                    // Portion
-                    HStack {
-                        Text(settings.localized(.portion))
-                            .font(.paceRounded(size: 16))
-                            .foregroundColor(.secondary)
-                        Text(entry.portion)
-                            .font(.paceRounded(size: 16, weight: .semibold))
-                            .foregroundColor(textColor)
-                    }
-                    .padding(.top, 8)
-                    
-                    // Timestamp
-                    Text(formattedTime)
-                        .font(.paceRounded(size: 14))
-                        .foregroundColor(.secondary)
-                        .padding(.top, 16)
                 }
                 .padding()
             }
-            .navigationTitle(settings.localized(.foodInfo))
+            .navigationTitle(isEditing ? settings.localized(.editFood) : settings.localized(.foodInfo))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(settings.localized(.done)) { dismiss() }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if isEditing {
+                        Button(settings.localized(.cancel)) {
+                            isEditing = false
+                        }
                         .font(.paceRounded(.body))
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isEditing {
+                        Button(settings.localized(.save)) {
+                            saveChanges()
+                        }
+                        .font(.paceRounded(.body, weight: .semibold))
+                    } else {
+                        Button(settings.localized(.edit)) {
+                            startEditing()
+                        }
+                        .font(.paceRounded(.body))
+                    }
                 }
             }
             .onAppear {
@@ -560,8 +600,170 @@ struct FoodDetailSheet: View {
         }
     }
     
+    private var detailContent: some View {
+        VStack(spacing: 24) {
+            // Sticker Image
+            if let image = loadedImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 450, maxHeight: 520)
+                    .shadow(color: Color(.label).opacity(0.15), radius: 12, y: 6)
+            } else if entry.cutoutImageData == nil {
+                Text(entry.emoji)
+                    .font(.system(size: 120))
+            } else {
+                ProgressView()
+                    .frame(width: 250, height: 250)
+            }
+            
+            // Food Name
+            Text(entry.name)
+                .font(.paceRounded(size: 28, weight: .black))
+                .foregroundColor(textColor)
+            
+            // Nutrition Info
+            HStack(spacing: 32) {
+                nutritionItem(
+                    icon: "flame.fill",
+                    value: "\(entry.calories)",
+                    unit: "Cal",
+                    color: Color(red: 1, green: 0.267, blue: 0)
+                )
+                
+                nutritionItem(
+                    icon: "leaf.fill",
+                    value: "\(entry.protein)",
+                    unit: "g",
+                    color: Color(red: 0.2, green: 0.68, blue: 0.38)
+                )
+                
+                nutritionItem(
+                    icon: "drop.fill",
+                    value: "\(entry.fat)",
+                    unit: "g",
+                    color: Color(red: 0.996, green: 0.56, blue: 0.66)
+                )
+            }
+            
+            // Portion
+            HStack {
+                Text(settings.localized(.portion))
+                    .font(.paceRounded(size: 16))
+                    .foregroundColor(.secondary)
+                Text(entry.portion)
+                    .font(.paceRounded(size: 16, weight: .semibold))
+                    .foregroundColor(textColor)
+            }
+            .padding(.top, 8)
+            
+            // Timestamp
+            Text(formattedTime)
+                .font(.paceRounded(size: 14))
+                .foregroundColor(.secondary)
+                .padding(.top, 16)
+        }
+    }
+    
+    private var editForm: some View {
+        VStack(spacing: 20) {
+            // Name field
+            VStack(alignment: .leading, spacing: 8) {
+                Text(settings.localized(.name))
+                    .font(.paceRounded(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                TextField(settings.localized(.foodNamePlaceholder), text: $editName)
+                    .font(.paceRounded(.body))
+                    .textFieldStyle(.roundedBorder)
+            }
+            
+            // Portion field
+            VStack(alignment: .leading, spacing: 8) {
+                Text(settings.localized(.portion))
+                    .font(.paceRounded(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                TextField("e.g. 1 bowl", text: $editPortion)
+                    .font(.paceRounded(.body))
+                    .textFieldStyle(.roundedBorder)
+            }
+            
+            // Nutrition fields
+            VStack(alignment: .leading, spacing: 8) {
+                Text(settings.localized(.nutrition))
+                    .font(.paceRounded(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 12) {
+                    nutritionTextField(title: settings.localized(.calories), value: $editCalories, unit: "")
+                    nutritionTextField(title: settings.localized(.proteinLabel), value: $editProtein, unit: "g")
+                    nutritionTextField(title: settings.localized(.fatLabel), value: $editFat, unit: "g")
+                }
+            }
+            
+            Spacer()
+        }
+    }
+    
+    private func nutritionTextField(title: String, value: Binding<String>, unit: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.paceRounded(size: 12))
+                .foregroundColor(.secondary)
+            HStack(spacing: 4) {
+                TextField("0", text: value)
+                    .font(.paceRounded(.body))
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.numberPad)
+                if !unit.isEmpty {
+                    Text(unit)
+                        .font(.paceRounded(size: 12))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    private func startEditing() {
+        editName = entry.name
+        editPortion = entry.portion
+        editCalories = String(entry.calories)
+        editProtein = String(entry.protein)
+        editFat = String(entry.fat)
+        isEditing = true
+    }
+    
+    private func saveChanges() {
+        // Validate inputs
+        guard let calories = Int(editCalories),
+              let protein = Int(editProtein),
+              let fat = Int(editFat),
+              !editName.isEmpty else {
+            // Invalid input - just cancel edit mode for now
+            isEditing = false
+            return
+        }
+        
+        // Update entry
+        entry.name = editName
+        entry.portion = editPortion
+        entry.calories = calories
+        entry.protein = protein
+        entry.fat = fat
+        
+        // Save context
+        do {
+            try modelContext.save()
+        } catch {
+            print("Failed to save entry: \(error)")
+        }
+        
+        isEditing = false
+    }
+    
     private var formattedTime: String {
         let formatter = DateFormatter()
+        formatter.locale = settings.language == .chinese ? Locale(identifier: "zh_CN") : Locale(identifier: "en_US")
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: entry.timestamp)

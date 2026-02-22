@@ -12,6 +12,7 @@ import SwiftData
 struct PaceApp: App {
     @State private var showingAddFood = false
     @State private var settings = AppSettingsManager.shared
+    @State private var hasCompletedOnboarding = AppSettingsManager.shared.hasCompletedOnboarding
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -28,12 +29,20 @@ struct PaceApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(externalShowAddFood: $showingAddFood)
-                .preferredColorScheme(settings.theme.colorScheme)
-                .environment(\.font, Font.system(.body, design: .rounded))
-                .onOpenURL { url in
-                    handleURL(url)
+            Group {
+                if hasCompletedOnboarding {
+                    ContentView(externalShowAddFood: $showingAddFood)
+                        .preferredColorScheme(settings.theme.colorScheme)
+                        .environment(\.font, Font.system(.body, design: .rounded))
+                        .onOpenURL { url in
+                            handleURL(url)
+                        }
+                } else {
+                    OnboardingView(isCompleted: $hasCompletedOnboarding)
+                        .preferredColorScheme(.dark)
+                        .environment(\.font, Font.system(.body, design: .rounded))
                 }
+            }
         }
         .modelContainer(sharedModelContainer)
     }
