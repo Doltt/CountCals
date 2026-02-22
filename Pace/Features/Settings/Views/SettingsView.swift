@@ -13,20 +13,36 @@ struct SettingsView: View {
     @State private var showingThemePicker = false
     @State private var showingBodyData = false
     @State private var showingOnboarding = false
-    @State private var viewModel = DashboardViewModel()
+    @State private var viewModel: DashboardViewModel?
     
     private func L(_ key: LocalizedKey) -> String {
         settings.localized(key)
     }
     
     var body: some View {
+        Group {
+            if let viewModel {
+                settingsContent(viewModel: viewModel)
+            } else {
+                Color(.systemBackground)
+            }
+        }
+        .task {
+            if viewModel == nil {
+                viewModel = DashboardViewModel()
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func settingsContent(viewModel: DashboardViewModel) -> some View {
         ScrollView {
             VStack(spacing: 24) {
                 // Welcome Header
                 welcomeSection
                 
                 // Body Data Section
-                bodyDataSection
+                bodyDataSection(viewModel: viewModel)
                 
                 // Appearance Section
                 appearanceSection
@@ -60,7 +76,8 @@ struct SettingsView: View {
     
     // MARK: - Body Data Section
     
-    private var bodyDataSection: some View {
+    @ViewBuilder
+    private func bodyDataSection(viewModel: DashboardViewModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L(.healthProfile))
                 .font(.paceRounded(.subheadline))

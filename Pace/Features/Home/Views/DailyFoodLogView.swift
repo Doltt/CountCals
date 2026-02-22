@@ -552,15 +552,20 @@ struct FoodDetailSheet: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    if isEditing {
-                        editForm
-                    } else {
-                        detailContent
+            ZStack {
+                Color(.systemBackground).ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        if isEditing {
+                            editForm
+                        } else {
+                            detailContent
+                        }
                     }
+                    .padding()
+                    .frame(minHeight: UIScreen.main.bounds.height - 100)
                 }
-                .padding()
             }
             .navigationTitle(isEditing ? settings.localized(.editFood) : settings.localized(.foodInfo))
             .navigationBarTitleDisplayMode(.inline)
@@ -744,7 +749,8 @@ struct FoodDetailSheet: View {
             return
         }
         
-        // Update entry
+        // Update entry properties through modelContext to ensure observation
+        modelContext.autosaveEnabled = false
         entry.name = editName
         entry.portion = editPortion
         entry.calories = calories
@@ -757,6 +763,7 @@ struct FoodDetailSheet: View {
         } catch {
             print("Failed to save entry: \(error)")
         }
+        modelContext.autosaveEnabled = true
         
         isEditing = false
     }
