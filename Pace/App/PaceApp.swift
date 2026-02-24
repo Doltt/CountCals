@@ -43,7 +43,6 @@ struct PaceApp: App {
                         .environment(\.font, Font.system(.body, design: .rounded))
                 }
             }
-            .statusBar(hidden: true)
         }
         .modelContainer(sharedModelContainer)
     }

@@ -12,7 +12,7 @@ struct DailyFoodLogView: View {
     @Query private var allEntries: [FoodEntry]
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
-    @State private var viewModel = DashboardViewModel()
+    @State private var viewModel = DailyFoodLogViewModel()
     private var settings: AppSettingsManager { AppSettingsManager.shared }
     
     // Selected date (default today)
@@ -21,8 +21,8 @@ struct DailyFoodLogView: View {
     // Week offset for calendar (0 = current week, -1 = last week, 1 = next week)
     @State private var weekOffset: Int = 0
     
-    // For smooth week switching - only 3 pages for performance
-    @State private var currentPage: Int = 1
+    // TabView current page (0 is today, negative is past, positive is future)
+    @State private var currentPage: Int = 0
     
     
     // Detail view
@@ -37,6 +37,11 @@ struct DailyFoodLogView: View {
     
     // Add food sheet
     @State private var showingAddFood = false
+    
+    // Share sheet
+    @State private var showingShareSheet = false
+    @State private var shareImage: UIImage? = nil
+    @State private var isGeneratingCollage = false
     
     init() {
         _allEntries = Query(sort: \FoodEntry.timestamp, order: .reverse)
@@ -120,35 +125,52 @@ struct DailyFoodLogView: View {
         max(0, viewModel.dailyCarbs - totalCarbs)
     }
     
-    // Header height constant for layout calculations
-    private var headerHeight: CGFloat { 94 }
-    
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ZStack {
-                Color(.systemBackground).ignoresSafeArea()
-                
-                // Scrollable content (bottom layer for blur effect)
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Top spacer for header
-                        Color.clear.frame(height: headerHeight)
-                        
-                        // Remaining Section
-                        remainingSection
-                        
-                        // Food Log Section
-                        foodLogSection
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Large Title Header (scrolls away)
+                    Text(formattedDateHeader)
+                        .font(.paceRounded(size: 32, weight: .bold))
+                        .foregroundColor(Color(.label))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    // Week Calendar (also scrolls away)
+                    weekCalendarView
+                        .frame(height: 58)
+                    
+                    // Remaining Section
+                    remainingSection
+                    
+                    // Food Log Section
+                    foodLogSection
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 100)
+            }
+            .background(Color(.systemBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // Share button on leading side
+                ToolbarItem(placement: .topBarLeading) {
+                    if !selectedDateEntries.isEmpty {
+                        shareButton
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 100)
                 }
                 
-                // Floating header with blur effect (top layer)
-                headerView
-                    .frame(height: headerHeight)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 12) {
+                        // Go to today button (only show when not today)
+                        if !isSelectedToday {
+                            todayButton
+                        }
+                        
+                        // Add button
+                        addButton
+                    }
+                }
             }
+            
             .navigationDestination(for: FoodEntry.self) { entry in
                 FoodDetailPage(entry: entry, onDelete: { entryToDelete in
                     self.entryToDelete = entryToDelete
@@ -174,48 +196,43 @@ struct DailyFoodLogView: View {
                 })
                 .environment(\.font, Font.system(.body, design: .rounded))
             }
-        }
-    }
-    
-    // MARK: - Header View
-    
-    private var headerView: some View {
-        VStack(spacing: 12) {
-            // Title and buttons row
-            HStack(alignment: .center, spacing: 0) {
-                // Date title with animation
-                dateTitle
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
-                // Right buttons
-                HStack(spacing: 8) {
-                    // Go to today button (only show when not today)
-                    if !isSelectedToday {
-                        todayButton
-                    }
-                    
-                    // Add button
-                    addButton
+            .sheet(isPresented: $showingShareSheet) {
+                if let image = shareImage {
+                    ShareSheet(activityItems: [image])
+                        .presentationDetents([.medium, .large])
                 }
             }
-            .padding(.horizontal, 20)
-            
-            // Week calendar with smooth paging
-            weekCalendarView
-                .frame(height: 58)
-                .padding(.horizontal, 20)
         }
-        .padding(.top, 8)
-        .padding(.bottom, 12)
-        .background(.ultraThinMaterial.opacity(0.5))
     }
     
-    private var dateTitle: some View {
-        Text(formattedDateHeader)
-            .font(.paceRounded(size: 28, weight: .black))
-            .foregroundColor(Color(.label))
-            .contentTransition(.numericText())
-            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: formattedDateHeader)
+    // MARK: - Loading Animation View
+    
+    struct StickerLoadingView: View {
+        @State private var rotation: Double = 0
+        @State private var scale: CGFloat = 1.0
+        
+        var body: some View {
+            ZStack {
+                // Rotating food emojis
+                ForEach(0..<3) { i in
+                    Text(["🍕", "🍔", "🍟"][i])
+                        .font(.system(size: 16))
+                        .offset(
+                            x: cos(Double(i) * 2.0 * .pi / 3.0 + rotation) * 12,
+                            y: sin(Double(i) * 2.0 * .pi / 3.0 + rotation) * 12
+                        )
+                        .scaleEffect(scale)
+                }
+            }
+            .onAppear {
+                withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                    rotation = 2 * .pi
+                }
+                withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
+                    scale = 1.2
+                }
+            }
+        }
     }
     
     private var formattedDateHeader: String {
@@ -233,96 +250,349 @@ struct DailyFoodLogView: View {
         return dateStr
     }
     
-    // Today button - matching reference style
+    // Today button - native style matching ProfileView toolbar buttons
     private var todayButton: some View {
         Button {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                goToToday()
-            }
+            goToToday()
         } label: {
             Text(settings.language == .chinese ? "今天" : "Today")
-                .font(.paceRounded(size: 13, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(Color(red: 1, green: 0.28, blue: 0.1))
-                )
+                .font(.paceRounded(.subheadline, weight: .semibold))
+                .foregroundStyle(Color(red: 1, green: 0.28, blue: 0.1))
         }
-        .buttonStyle(.plain)
     }
     
-    // Add button - transparent style for blur background
+    // Add button - native style matching ProfileView toolbar buttons
     private var addButton: some View {
         Button {
             showingAddFood = true
         } label: {
             Image(systemName: "plus")
-                .font(.paceRounded(size: 16, weight: .medium))
-                .foregroundColor(Color(.label))
-                .frame(width: 32, height: 32)
-                .background(
-                    Circle()
-                        .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
-                )
-        }
-        .buttonStyle(.plain)
-    }
-    
-    // MARK: - Week Calendar View with Native Paging
-    
-    private var weekCalendarView: some View {
-        TabView(selection: $currentPage) {
-            // Previous week
-            weekRow(for: weekOffset - 1)
-                .tag(0)
-            
-            // Current week
-            weekRow(for: weekOffset)
-                .tag(1)
-            
-            // Next week
-            weekRow(for: weekOffset + 1)
-                .tag(2)
-        }
-        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-        .onChange(of: currentPage) { oldPage, newPage in
-            handlePageChange(from: oldPage, to: newPage)
+                .font(.paceRounded(.body, weight: .semibold))
+                .foregroundStyle(.primary)
         }
     }
     
-    private func handlePageChange(from oldPage: Int, to newPage: Int) {
-        let isSwipingLeft = newPage > oldPage
-        let isSwipingRight = newPage < oldPage
+    // Share button with loading state
+    private var shareButton: some View {
+        Button {
+            Task {
+                await generateAndShareCollage()
+            }
+        } label: {
+            if isGeneratingCollage {
+                // Fun loading animation
+                StickerLoadingView()
+                    .frame(width: 24, height: 24)
+            } else {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.paceRounded(.body, weight: .semibold))
+                    .foregroundStyle(.primary)
+            }
+        }
+        .disabled(isGeneratingCollage)
+    }
+    
+    // MARK: - Sticker Collage Generation
+    
+    private func generateAndShareCollage() async {
+        await MainActor.run {
+            isGeneratingCollage = true
+        }
         
-        // Prevent swiping to future if not allowed
-        if isSwipingLeft && !canGoToNextWeek && oldPage == 1 {
-            // Reset back to current page without animation
-            currentPage = oldPage
+        // Small delay to show loading animation
+        try? await Task.sleep(for: .milliseconds(800))
+        
+        let entries = selectedDateEntries
+        guard !entries.isEmpty else {
+            await MainActor.run {
+                isGeneratingCollage = false
+            }
             return
         }
         
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            if isSwipingLeft {
-                weekOffset += 1
-                selectSundayOfCurrentWeek()
-            } else if isSwipingRight {
-                weekOffset -= 1
-                selectSundayOfCurrentWeek()
+        // Generate collage image with white background
+        let collageSize = CGSize(width: 1080, height: 1080)
+        let renderer = UIGraphicsImageRenderer(size: collageSize, format: UIGraphicsImageRendererFormat())
+        
+        let image = renderer.image { context in
+            let cgContext = context.cgContext
+            
+            // Fill white background (JPG style)
+            UIColor.white.setFill()
+            context.fill(CGRect(origin: .zero, size: collageSize))
+            
+            // Draw food stickers with name labels
+            drawFoodStickerCollage(in: context, size: collageSize, entries: entries)
+            
+            // Add date at top
+            drawDateHeader(in: context, size: collageSize)
+        }
+        
+        await MainActor.run {
+            shareImage = image
+            isGeneratingCollage = false
+            showingShareSheet = true
+        }
+    }
+    
+    private func drawFoodStickerCollage(in context: UIGraphicsImageRendererContext, size: CGSize, entries: [FoodEntry]) {
+        let cgContext = context.cgContext
+        let displayEntries = Array(entries.prefix(6))
+        let count = displayEntries.count
+        
+        var random = SystemRandomNumberGenerator()
+        
+        // Calculate grid layout based on count
+        let positions = calculateStickerPositions(count: count, size: size, using: &random)
+        
+        for (index, entry) in displayEntries.enumerated() {
+            let pos = positions[index]
+            let image = entry.cutoutImage ?? imageFromEmoji(entry.emoji, size: CGSize(width: 200, height: 200))
+            
+            cgContext.saveGState()
+            
+            // Apply rotation
+            cgContext.translateBy(x: pos.x + pos.size/2, y: pos.y + pos.size/2)
+            cgContext.rotate(by: pos.rotation)
+            
+            // Draw shadow
+            cgContext.setShadow(
+                offset: CGSize(width: 2, height: 4),
+                blur: 8,
+                color: UIColor.black.withAlphaComponent(0.15).cgColor
+            )
+            
+            // Calculate rects
+            let imageRect = CGRect(x: -pos.size/2, y: -pos.size/2 - 15, width: pos.size, height: pos.size)
+            let borderRect = imageRect.insetBy(dx: -10, dy: -10)
+            
+            // Draw white outline following the image shape
+            if let cgImage = image.cgImage {
+                // Create white outline by drawing enlarged white version first
+                drawOutline(for: cgImage, in: cgContext, rect: borderRect, outlineWidth: 8)
+                
+                // Draw actual image
+                cgContext.saveGState()
+                let path = UIBezierPath(roundedRect: imageRect, cornerRadius: 4)
+                path.addClip()
+                image.draw(in: imageRect)
+                cgContext.restoreGState()
+            } else {
+                // Fallback: just draw image
+                image.draw(in: imageRect)
             }
             
-            // Reset to middle page for infinite scroll illusion
-            currentPage = 1
+            // Draw food name below image
+            let text = entry.name
+            let fontSize: CGFloat = min(24, pos.size / 6)
+            let textAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: fontSize, weight: .bold),
+                .foregroundColor: UIColor.darkText
+            ]
+            
+            let textSize = (text as NSString).size(withAttributes: textAttributes)
+            let textRect = CGRect(
+                x: -textSize.width / 2,
+                y: pos.size/2 + 10,
+                width: textSize.width,
+                height: textSize.height
+            )
+            
+            // White background for text
+            let textBgRect = textRect.insetBy(dx: -8, dy: -4)
+            let textPath = UIBezierPath(roundedRect: textBgRect, cornerRadius: 8)
+            UIColor.white.setFill()
+            textPath.fill()
+            
+            (text as NSString).draw(at: textRect.origin, withAttributes: textAttributes)
+            
+            cgContext.restoreGState()
+        }
+    }
+    
+    private func drawOutline(for cgImage: CGImage, in cgContext: CGContext, rect: CGRect, outlineWidth: CGFloat) {
+        // Create a mask from the image alpha channel
+        let width = Int(rect.width)
+        let height = Int(rect.height)
+        
+        guard width > 0, height > 0 else { return }
+        
+        // Draw white background enlarged
+        cgContext.saveGState()
+        
+        // Scale to fit rect
+        let scaleX = rect.width / CGFloat(cgImage.width)
+        let scaleY = rect.height / CGFloat(cgImage.height)
+        cgContext.scaleBy(x: scaleX, y: scaleY)
+        
+        // Draw multiple times with offset to create outline effect
+        let offsets: [(CGFloat, CGFloat)] = [
+            (-1, -1), (0, -1), (1, -1),
+            (-1, 0),           (1, 0),
+            (-1, 1),  (0, 1),  (1, 1)
+        ]
+        
+        for (dx, dy) in offsets {
+            cgContext.saveGState()
+            cgContext.translateBy(
+                x: (rect.origin.x + dx * outlineWidth) / scaleX,
+                y: (rect.origin.y + dy * outlineWidth) / scaleY
+            )
+            
+            // Draw white version
+            cgContext.setBlendMode(.normal)
+            UIColor.white.setFill()
+            
+            // Create mask from alpha channel and fill
+            let imageRect = CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height)
+            cgContext.clip(to: imageRect, mask: cgImage)
+            cgContext.fill(imageRect)
+            
+            cgContext.restoreGState()
+        }
+        
+        cgContext.restoreGState()
+    }
+    
+    private func imageFromEmoji(_ emoji: String, size: CGSize) -> UIImage {
+        UIGraphicsImageRenderer(size: size).image { context in
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: size.width * 0.7)
+            ]
+            let attributedString = NSAttributedString(string: emoji, attributes: attributes)
+            let stringSize = attributedString.size()
+            let rect = CGRect(
+                x: (size.width - stringSize.width) / 2,
+                y: (size.height - stringSize.height) / 2,
+                width: stringSize.width,
+                height: stringSize.height
+            )
+            attributedString.draw(in: rect)
+        }
+    }
+    
+    private func calculateStickerPositions(count: Int, size: CGSize, using random: inout SystemRandomNumberGenerator) -> [(x: CGFloat, y: CGFloat, size: CGFloat, rotation: CGFloat)] {
+        var positions: [(CGFloat, CGFloat, CGFloat, CGFloat)] = []
+        
+        let sizeTiers: [CGFloat] = [220, 260, 300, 340]
+        let padding: CGFloat = 80
+        let availableWidth = size.width - padding * 2
+        let availableHeight = size.height - 200 // Reserve space for header
+        
+        switch count {
+        case 1:
+            // Center
+            let s: CGFloat = 320
+            positions.append((size.width/2 - s/2, size.height/2 - s/2 + 20, s, 0))
+            
+        case 2:
+            // Side by side
+            let s: CGFloat = 280
+            positions.append((padding + 40, size.height/2 - s/2 + 20, s, CGFloat.random(in: -10...10, using: &random) * .pi / 180))
+            positions.append((size.width - padding - 40 - s, size.height/2 - s/2 + 20, s, CGFloat.random(in: -10...10, using: &random) * .pi / 180))
+            
+        case 3:
+            // Triangle
+            let s: CGFloat = 240
+            positions.append((size.width/2 - s/2, padding + 100, s, CGFloat.random(in: -15...15, using: &random) * .pi / 180))
+            positions.append((padding + 30, size.height - padding - s - 80, s, CGFloat.random(in: -15...15, using: &random) * .pi / 180))
+            positions.append((size.width - padding - 30 - s, size.height - padding - s - 80, s, CGFloat.random(in: -15...15, using: &random) * .pi / 180))
+            
+        case 4:
+            // Grid 2x2
+            let s: CGFloat = 220
+            let gap: CGFloat = 40
+            let startX = (size.width - (s * 2 + gap)) / 2
+            let startY = (size.height - (s * 2 + gap)) / 2 + 40
+            for row in 0..<2 {
+                for col in 0..<2 {
+                    let x = startX + CGFloat(col) * (s + gap)
+                    let y = startY + CGFloat(row) * (s + gap)
+                    let rot = CGFloat.random(in: -12...12, using: &random) * .pi / 180
+                    positions.append((x, y, s, rot))
+                }
+            }
+            
+        default:
+            // Random scattered
+            for i in 0..<min(count, 6) {
+                let s = sizeTiers.randomElement(using: &random) ?? 240
+                let x = CGFloat.random(in: padding...(size.width - s - padding), using: &random)
+                let y = CGFloat.random(in: (padding + 80)...(size.height - s - padding - 60), using: &random)
+                let rot = CGFloat.random(in: -20...20, using: &random) * .pi / 180
+                positions.append((x, y, s, rot))
+            }
+        }
+        
+        return positions
+    }
+    
+    private func drawDateHeader(in context: UIGraphicsImageRendererContext, size: CGSize) {
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = settings.language == .chinese ? Locale(identifier: "zh_CN") : Locale(identifier: "en_US")
+        dateFormatter.dateFormat = settings.language == .chinese ? "M月d日" : "MMM d"
+        let dateText = dateFormatter.string(from: selectedDate)
+        
+        let text = settings.language == .chinese ? "\(dateText) 的饮食记录" : "Food on \(dateText)"
+        
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 40, weight: .bold),
+            .foregroundColor: UIColor.black
+        ]
+        
+        let textSize = (text as NSString).size(withAttributes: attributes)
+        let textRect = CGRect(
+            x: (size.width - textSize.width) / 2,
+            y: 60,
+            width: textSize.width,
+            height: textSize.height
+        )
+        
+        (text as NSString).draw(at: textRect.origin, withAttributes: attributes)
+    }
+    
+    // MARK: - Week Calendar View with Infinite Paging
+    
+    private let minWeekOffset = -100
+    
+    // Calculate max week offset (0 = current week, can't go to future)
+    private var maxWeekOffset: Int {
+        let today = calendar.startOfDay(for: Date())
+        let weekday = calendar.component(.weekday, from: today)
+        guard let currentWeekStart = calendar.date(byAdding: .day, value: -(weekday - 1), to: today) else {
+            return 0
+        }
+        // Today is in current week (offset 0)
+        // We can only go to current week and past weeks
+        return 0
+    }
+    
+    private var currentWeekOffsetRange: ClosedRange<Int> {
+        minWeekOffset...maxWeekOffset
+    }
+    
+    private var weekCalendarView: some View {
+        GeometryReader { geometry in
+            TabView(selection: $currentPage) {
+                ForEach(currentWeekOffsetRange, id: \.self) { offset in
+                    weekRow(for: offset)
+                        .tag(offset)
+                }
+            }
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+            .onChange(of: currentPage) { _, newPage in
+                // Update weekOffset when page changes
+                weekOffset = newPage
+                // Update selected date to first day of the new week
+                updateSelectedDateForCurrentWeek()
+            }
         }
     }
     
     private func weekRow(for offset: Int) -> some View {
-        let days = weekDaysForOffset(offset)
-        return HStack(spacing: 6) {
-            ForEach(days, id: \.self) { date in
-                let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
-                dayCell(date: date, isSelected: isSelected)
+        HStack(spacing: 6) {
+            ForEach(weekDaysForOffset(offset), id: \.self) { date in
+                dayCell(date: date, isSelected: calendar.isDate(date, inSameDayAs: selectedDate))
             }
         }
     }
@@ -330,10 +600,8 @@ struct DailyFoodLogView: View {
     private func weekDaysForOffset(_ offset: Int) -> [Date] {
         let today = calendar.startOfDay(for: Date())
         let weekday = calendar.component(.weekday, from: today)
-        guard let currentWeekStart = calendar.date(byAdding: .day, value: -(weekday - 1), to: today) else {
-            return []
-        }
-        guard let targetWeekStart = calendar.date(byAdding: .weekOfYear, value: offset, to: currentWeekStart) else {
+        guard let currentWeekStart = calendar.date(byAdding: .day, value: -(weekday - 1), to: today),
+              let targetWeekStart = calendar.date(byAdding: .weekOfYear, value: offset, to: currentWeekStart) else {
             return []
         }
         return (0..<7).compactMap { day in
@@ -342,24 +610,19 @@ struct DailyFoodLogView: View {
     }
     
     private func dayCell(date: Date, isSelected: Bool) -> some View {
-        let dayLetter = dayLetter(for: date)
-        let dayNumber = calendar.component(.day, from: date)
-        
-        return Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                selectedDate = date
-            }
+        Button {
+            selectedDate = date
         } label: {
             VStack(spacing: 4) {
-                Text(dayLetter)
+                Text(dayLetter(for: date))
                     .font(.paceRounded(size: 10, weight: .medium))
                 
-                Text("\(dayNumber)")
+                Text("\(calendar.component(.day, from: date))")
                     .font(.paceRounded(size: 16, weight: .bold))
             }
-            .foregroundColor(.white)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
+            .frame(height: 44)
             .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(isSelected ? 
@@ -369,21 +632,29 @@ struct DailyFoodLogView: View {
             )
         }
         .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
     }
     
-    private func selectSundayOfCurrentWeek() {
+    private func updateSelectedDateForCurrentWeek() {
+        // Get the weekday of currently selected date (1 = Sunday, 7 = Saturday)
+        let selectedWeekday = calendar.component(.weekday, from: selectedDate)
+        
+        // Get all days in the new week
         let days = weekDaysForOffset(weekOffset)
-        if let sunday = days.first {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                selectedDate = sunday
-            }
+        
+        // Select the same weekday in the new week
+        if let targetDay = days.first(where: { calendar.component(.weekday, from: $0) == selectedWeekday }) {
+            selectedDate = targetDay
+        } else if let firstDay = days.first {
+            // Fallback to first day if something goes wrong
+            selectedDate = firstDay
         }
     }
     
     private func goToToday() {
         weekOffset = 0
         selectedDate = Date()
-        currentPage = 1
+        currentPage = 0
     }
     
     private func dayLetter(for date: Date) -> String {
