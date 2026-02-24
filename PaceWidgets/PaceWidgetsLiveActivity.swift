@@ -61,9 +61,9 @@ private struct LockScreenView: View {
                 
                 // Macros row
                 HStack(spacing: 12) {
-                    MacroPill(emoji: "🥖", label: "C", value: state.remainingCarbs)
-                    MacroPill(emoji: "🥩", label: "P", value: state.remainingProtein)
-                    MacroPill(emoji: "🥑", label: "F", value: state.remainingFat)
+                    MacroPill(icon: "circle.hexagonpath.fill", label: "C", value: state.remainingCarbs, color: Color(red: 1, green: 0.757, blue: 0.027)) // #FFC107
+                    MacroPill(icon: "leaf.fill", label: "P", value: state.remainingProtein, color: Color(red: 0.298, green: 0.686, blue: 0.314)) // #4CAF50
+                    MacroPill(icon: "drop.fill", label: "F", value: state.remainingFat, color: Color(red: 0.914, green: 0.118, blue: 0.388)) // #E91E63
                 }
             }
             
@@ -90,14 +90,16 @@ private struct LockScreenView: View {
 // MARK: - Helper Views
 
 private struct MacroPill: View {
-    let emoji: String
+    let icon: String
     let label: String
     let value: Int
+    let color: Color
     
     var body: some View {
         HStack(spacing: 4) {
-            Text(emoji)
-                .font(.system(size: 12, design: .rounded))
+            Image(systemName: icon)
+                .font(.system(size: 10, design: .rounded))
+                .foregroundStyle(color)
             Text("\(value)")
                 .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundStyle(.primary)

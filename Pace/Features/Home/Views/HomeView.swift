@@ -43,18 +43,12 @@ struct HomeView: View {
                     .offset(y: hasAppeared ? 0 : -20)
                     .animation(.easeOut(duration: 0.4).delay(0.1), value: hasAppeared)
                 
-                // Main visualization: Rings
+                // Main visualization: Bars
                 mainVisualization
-                    .padding(.top, 60)
+                    .padding(.top, 40)
                     .scaleEffect(hasAppeared ? 1 : 0.8)
                     .opacity(hasAppeared ? 1 : 0)
                     .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2), value: hasAppeared)
-                
-                // Stats Row
-                statsRow
-                    .padding(.top, 30)
-                    .opacity(hasAppeared ? 1 : 0)
-                    .animation(.easeOut(duration: 0.4).delay(0.4), value: hasAppeared)
                 
                 Spacer()
                 
@@ -116,8 +110,8 @@ struct HomeView: View {
                     .contentTransition(.numericText())
                 
                 Image(systemName: "chevron.right")
-                    .font(.paceRounded(size: 20, weight: .semibold))
-                    .foregroundColor(secondaryTextColor)
+                    .font(.paceRounded(.caption))
+                    .foregroundStyle(.tertiary)
             }
         }
         .buttonStyle(.plain)
@@ -127,11 +121,13 @@ struct HomeView: View {
         Button {
             showingProfile = true
         } label: {
-            DashboardRingsView(
+            DashboardBarsView(
                 consumedCalories: consumedCalories,
                 totalCalories: viewModel.dailyCalories,
                 consumedProtein: viewModel.consumedProtein(from: allEntries),
                 totalProtein: viewModel.dailyProtein,
+                consumedCarbs: viewModel.consumedCarbs(from: allEntries),
+                totalCarbs: viewModel.dailyCarbs,
                 consumedFat: viewModel.consumedFat(from: allEntries),
                 totalFat: viewModel.dailyFat
             )
@@ -139,36 +135,7 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
     
-    private var statsRow: some View {
-        let remainingCal = max(0, viewModel.dailyCalories - consumedCalories)
-        let remainingProtein = max(0, viewModel.dailyProtein - viewModel.consumedProtein(from: allEntries))
-        let remainingFat = max(0, viewModel.dailyFat - viewModel.consumedFat(from: allEntries))
-        
-        return HStack(spacing: 24) {
-            macroItem(icon: "flame.fill", value: "\(remainingCal)", unit: "kcal", color: Color(red: 1, green: 0.267, blue: 0))
-            macroItem(icon: "leaf.fill", value: "\(remainingProtein)", unit: "g", color: Color(red: 0.2, green: 0.68, blue: 0.38))
-            macroItem(icon: "drop.fill", value: "\(remainingFat)", unit: "g", color: Color(red: 0.996, green: 0.56, blue: 0.66))
-        }
-        .padding(.horizontal, 40)
-    }
-    
-    private func macroItem(icon: String, value: String, unit: String, color: Color) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.paceRounded(size: 20, weight: .semibold))
-                .foregroundColor(color)
-            
-            HStack(alignment: .lastTextBaseline, spacing: 2) {
-                Text(value)
-                    .font(.paceRounded(size: 24, weight: .bold))
-                    .foregroundColor(Color(.label))
-                Text(unit)
-                    .font(.paceRounded(size: 12, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabel))
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
+
     
     private var addFoodButton: some View {
         Button {
@@ -233,74 +200,6 @@ struct ActivityLevelPickerSheet: View {
             }
             .navigationTitle(settings.localized(.activityLevel))
             .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-}
-
-// MARK: - Dashboard Rings
-
-struct DashboardRingsView: View {
-    let consumedCalories: Int
-    let totalCalories: Int
-    let consumedProtein: Int
-    let totalProtein: Int
-    let consumedFat: Int
-    let totalFat: Int
-    
-    private static let ringLineWidth: CGFloat = 18
-    private static let ringSpacing: CGFloat = 10
-    private static let viewSize: CGFloat = 220
-    
-    private var progressCalories: CGFloat {
-        guard totalCalories > 0 else { return 0 }
-        return min(1, CGFloat(consumedCalories) / CGFloat(totalCalories))
-    }
-    
-    private var progressProtein: CGFloat {
-        guard totalProtein > 0 else { return 0 }
-        return min(1, CGFloat(consumedProtein) / CGFloat(totalProtein))
-    }
-    
-    private var progressFat: CGFloat {
-        guard totalFat > 0 else { return 0 }
-        return min(1, CGFloat(consumedFat) / CGFloat(totalFat))
-    }
-    
-    // Brand colors (intentional design choice)
-    private static let colorCalories = Color(red: 1, green: 0.267, blue: 0)
-    private static let colorProtein = Color(red: 0.2, green: 0.68, blue: 0.38)
-    private static let colorFat = Color(red: 0.996, green: 0.56, blue: 0.66)
-    
-    // Track color using system semantic color
-    private static let trackColor = Color(.tertiarySystemFill)
-    
-    var body: some View {
-        ZStack {
-            ringView(progress: progressCalories, color: Self.colorCalories, radius: Self.ringRadius(for: 0))
-            ringView(progress: progressProtein, color: Self.colorProtein, radius: Self.ringRadius(for: 1))
-            ringView(progress: progressFat, color: Self.colorFat, radius: Self.ringRadius(for: 2))
-        }
-        .frame(width: Self.viewSize, height: Self.viewSize)
-    }
-    
-    private static func ringRadius(for index: Int) -> CGFloat {
-        let outer = (viewSize - ringLineWidth) / 2
-        let step = ringLineWidth + ringSpacing
-        return outer - CGFloat(index) * step
-    }
-    
-    private func ringView(progress: CGFloat, color: Color, radius: CGFloat) -> some View {
-        let size = radius * 2
-        return ZStack {
-            Circle()
-                .stroke(Self.trackColor, style: StrokeStyle(lineWidth: Self.ringLineWidth, lineCap: .round))
-                .frame(width: size, height: size)
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(color, style: StrokeStyle(lineWidth: Self.ringLineWidth, lineCap: .round))
-                .frame(width: size, height: size)
-                .rotationEffect(.degrees(-90))
-                .animation(.spring(response: 0.6, dampingFraction: 0.8), value: progress)
         }
     }
 }

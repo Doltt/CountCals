@@ -48,6 +48,10 @@ struct ProfileView: View {
         Int(Double(tdee) * 0.25 / 4.0)
     }
     
+    private var dailyCarbs: Int {
+        Int(Double(tdee) * 0.45 / 4.0)
+    }
+    
     private var dailyFat: Int {
         Int(Double(tdee) * 0.30 / 9.0)
     }
@@ -311,9 +315,20 @@ struct ProfileView: View {
                 // Protein
                 targetRow(
                     icon: "leaf.fill",
-                    color: Color(red: 0.2, green: 0.68, blue: 0.38),
+                    color: Color(hex: "4CAF50"),
                     label: settings.localized(.proteinLabel),
                     value: dailyProtein,
+                    unit: "g"
+                )
+                
+                Divider().opacity(0.5)
+                
+                // Carbs
+                targetRow(
+                    icon: "circle.hexagonpath.fill",
+                    color: Color(hex: "FFC107"),
+                    label: settings.localized(.carbsLabel),
+                    value: dailyCarbs,
                     unit: "g"
                 )
                 
@@ -322,7 +337,7 @@ struct ProfileView: View {
                 // Fat
                 targetRow(
                     icon: "drop.fill",
-                    color: Color(red: 0.996, green: 0.56, blue: 0.66),
+                    color: Color(hex: "E91E63"),
                     label: settings.localized(.fatLabel),
                     value: dailyFat,
                     unit: "g"

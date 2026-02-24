@@ -21,6 +21,10 @@ struct DailyFoodLogView: View {
     // Week offset for calendar (0 = current week, -1 = last week, 1 = next week)
     @State private var weekOffset: Int = 0
     
+    // For smooth week switching - only 3 pages for performance
+    @State private var currentPage: Int = 1
+    
+    
     // Detail view
     @State private var selectedEntry: FoodEntry? = nil
     
@@ -31,44 +35,30 @@ struct DailyFoodLogView: View {
     // Navigation path
     @State private var navigationPath = NavigationPath()
     
+    // Add food sheet
+    @State private var showingAddFood = false
+    
     init() {
         _allEntries = Query(sort: \FoodEntry.timestamp, order: .reverse)
     }
     
     private var calendar: Calendar { Calendar.current }
     
-    /// Get the week days based on current week offset
-    private var weekDays: [Date] {
+    /// Check if we can go to next week (can't go to future weeks beyond today)
+    private var canGoToNextWeek: Bool {
         let today = calendar.startOfDay(for: Date())
         let weekday = calendar.component(.weekday, from: today)
-        // Sunday = 1, Monday = 2, etc.
-        // Get the start of current week (Sunday)
         guard let currentWeekStart = calendar.date(byAdding: .day, value: -(weekday - 1), to: today) else {
-            return []
+            return false
         }
-        // Apply week offset
-        guard let targetWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentWeekStart) else {
-            return []
+        guard let nextWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset + 1, to: currentWeekStart) else {
+            return false
         }
-        return (0..<7).compactMap { day in
-            calendar.date(byAdding: .day, value: day, to: targetWeekStart)
-        }
+        return nextWeekStart <= today
     }
     
     private var isSelectedToday: Bool {
         calendar.isDate(selectedDate, inSameDayAs: Date())
-    }
-    
-    private var isSelectedPast: Bool {
-        selectedDate < calendar.startOfDay(for: Date())
-    }
-    
-    private var isSelectedFuture: Bool {
-        selectedDate > calendar.startOfDay(for: Date())
-    }
-    
-    private var selectedWeekday: Int {
-        calendar.component(.weekday, from: selectedDate)
     }
     
     private var selectedDateEntries: [FoodEntry] {
@@ -88,6 +78,10 @@ struct DailyFoodLogView: View {
         selectedDateEntries.reduce(0) { $0 + $1.fat }
     }
     
+    private var totalCarbs: Int {
+        selectedDateEntries.reduce(0) { $0 + $1.carbs }
+    }
+    
     // Progress calculations
     private var caloriesProgress: Double {
         guard viewModel.dailyCalories > 0 else { return 0 }
@@ -104,6 +98,11 @@ struct DailyFoodLogView: View {
         return min(1.0, Double(totalFat) / Double(viewModel.dailyFat))
     }
     
+    private var carbsProgress: Double {
+        guard viewModel.dailyCarbs > 0 else { return 0 }
+        return min(1.0, Double(totalCarbs) / Double(viewModel.dailyCarbs))
+    }
+    
     // Remaining calculations
     private var remainingCalories: Int {
         max(0, viewModel.dailyCalories - totalCalories)
@@ -117,19 +116,23 @@ struct DailyFoodLogView: View {
         max(0, viewModel.dailyFat - totalFat)
     }
     
+    private var remainingCarbs: Int {
+        max(0, viewModel.dailyCarbs - totalCarbs)
+    }
+    
+    // Header height constant for layout calculations
+    private var headerHeight: CGFloat { 94 }
+    
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack {
                 Color(.systemBackground).ignoresSafeArea()
                 
+                // Scrollable content (bottom layer for blur effect)
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Date Header
-                        dateHeader
-                            .padding(.top, 20)
-                        
-                        // Week Calendar with swipe
-                        weekCalendarWithSwipe
+                        // Top spacer for header
+                        Color.clear.frame(height: headerHeight)
                         
                         // Remaining Section
                         remainingSection
@@ -140,6 +143,11 @@ struct DailyFoodLogView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 100)
                 }
+                
+                // Floating header with blur effect (top layer)
+                headerView
+                    .frame(height: headerHeight)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .navigationDestination(for: FoodEntry.self) { entry in
                 FoodDetailPage(entry: entry, onDelete: { entryToDelete in
@@ -160,144 +168,251 @@ struct DailyFoodLogView: View {
             } message: {
                 Text(settings.localized(.deleteConfirmationMessage))
             }
+            .fullScreenCover(isPresented: $showingAddFood) {
+                AddFoodView(onAddSuccess: {
+                    goToToday()
+                })
+                .environment(\.font, Font.system(.body, design: .rounded))
+            }
         }
     }
     
-    // MARK: - Colors
+    // MARK: - Header View
     
-    private var textColor: Color {
-        Color(.label)
-    }
-    
-    private var secondaryTextColor: Color {
-        Color(.secondaryLabel)
-    }
-    
-    private var cardBackgroundColor: Color {
-        Color(.secondarySystemBackground)
-    }
-    
-    // MARK: - Subviews
-    
-    private var dateHeader: some View {
-        HStack {
-            Text(formattedDateHeader)
-                .font(.paceRounded(size: 28, weight: .black))
-                .foregroundColor(textColor)
-            Spacer()
+    private var headerView: some View {
+        VStack(spacing: 12) {
+            // Title and buttons row
+            HStack(alignment: .center, spacing: 0) {
+                // Date title with animation
+                dateTitle
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                // Right buttons
+                HStack(spacing: 8) {
+                    // Go to today button (only show when not today)
+                    if !isSelectedToday {
+                        todayButton
+                    }
+                    
+                    // Add button
+                    addButton
+                }
+            }
+            .padding(.horizontal, 20)
+            
+            // Week calendar with smooth paging
+            weekCalendarView
+                .frame(height: 58)
+                .padding(.horizontal, 20)
         }
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .background(.ultraThinMaterial.opacity(0.5))
+    }
+    
+    private var dateTitle: some View {
+        Text(formattedDateHeader)
+            .font(.paceRounded(size: 28, weight: .black))
+            .foregroundColor(Color(.label))
+            .contentTransition(.numericText())
+            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: formattedDateHeader)
     }
     
     private var formattedDateHeader: String {
         let formatter = DateFormatter()
         formatter.locale = settings.language == .chinese ? Locale(identifier: "zh_CN") : Locale(identifier: "en_US")
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
+        
+        // Format: "MMM dd" (e.g., "Mar 08" or "Feb 23")
+        formatter.dateFormat = settings.language == .chinese ? "M月d日" : "MMM dd"
         let dateStr = formatter.string(from: selectedDate)
+        
         if isSelectedToday {
-            return settings.language == .chinese ? "\(dateStr)，今天" : "\(dateStr), Today"
+            let todayText = settings.language == .chinese ? "今天" : "Today"
+            return settings.language == .chinese ? "\(dateStr)，\(todayText)" : "\(dateStr), \(todayText)"
         }
         return dateStr
     }
     
-    private var weekCalendarWithSwipe: some View {
-        // Add swipe gesture to the calendar area
-        HStack(spacing: 8) {
-            ForEach(weekDays, id: \.self) { date in
-                let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
-                let isToday = calendar.isDate(date, inSameDayAs: Date())
-                let dayLetter = dayLetter(for: date)
-                let dayNumber = calendar.component(.day, from: date)
-                
-                Button {
-                    withAnimation(.spring(response: 0.3)) {
-                        selectedDate = date
-                    }
-                } label: {
-                    VStack(spacing: 6) {
-                        Text(dayLetter)
-                            .font(.paceRounded(size: 12, weight: .medium))
-                            .foregroundColor(isSelected ? .white : secondaryTextColor)
-                        
-                        Text("\(dayNumber)")
-                            .font(.paceRounded(size: 16, weight: .semibold))
-                            .foregroundColor(isSelected ? .white : textColor)
-                    }
-                    .frame(width: 44, height: 60)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(isSelected ? Color(red: 0.9, green: 0.5, blue: 0.4) : cardBackgroundColor)
-                    )
-                }
-                .buttonStyle(.plain)
+    // Today button - matching reference style
+    private var todayButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                goToToday()
             }
+        } label: {
+            Text(settings.language == .chinese ? "今天" : "Today")
+                .font(.paceRounded(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(Color(red: 1, green: 0.28, blue: 0.1))
+                )
         }
-        .contentShape(Rectangle())
-        .gesture(
-            DragGesture()
-                .onEnded { value in
-                    let threshold: CGFloat = 50
-                    if value.translation.width < -threshold {
-                        // Swipe left - go to next week
-                        withAnimation(.spring(response: 0.4)) {
-                            weekOffset += 1
-                            // Keep the same weekday in the new week
-                            selectDateWithSameWeekday()
-                        }
-                    } else if value.translation.width > threshold {
-                        // Swipe right - go to previous week
-                        withAnimation(.spring(response: 0.4)) {
-                            weekOffset -= 1
-                            // Keep the same weekday in the new week
-                            selectDateWithSameWeekday()
-                        }
-                    }
-                }
-        )
+        .buttonStyle(.plain)
     }
     
-    private func selectDateWithSameWeekday() {
-        // Get the new week's start date
+    // Add button - transparent style for blur background
+    private var addButton: some View {
+        Button {
+            showingAddFood = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.paceRounded(size: 16, weight: .medium))
+                .foregroundColor(Color(.label))
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle()
+                        .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    // MARK: - Week Calendar View with Native Paging
+    
+    private var weekCalendarView: some View {
+        TabView(selection: $currentPage) {
+            // Previous week
+            weekRow(for: weekOffset - 1)
+                .tag(0)
+            
+            // Current week
+            weekRow(for: weekOffset)
+                .tag(1)
+            
+            // Next week
+            weekRow(for: weekOffset + 1)
+                .tag(2)
+        }
+        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        .onChange(of: currentPage) { oldPage, newPage in
+            handlePageChange(from: oldPage, to: newPage)
+        }
+    }
+    
+    private func handlePageChange(from oldPage: Int, to newPage: Int) {
+        let isSwipingLeft = newPage > oldPage
+        let isSwipingRight = newPage < oldPage
+        
+        // Prevent swiping to future if not allowed
+        if isSwipingLeft && !canGoToNextWeek && oldPage == 1 {
+            // Reset back to current page without animation
+            currentPage = oldPage
+            return
+        }
+        
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            if isSwipingLeft {
+                weekOffset += 1
+                selectSundayOfCurrentWeek()
+            } else if isSwipingRight {
+                weekOffset -= 1
+                selectSundayOfCurrentWeek()
+            }
+            
+            // Reset to middle page for infinite scroll illusion
+            currentPage = 1
+        }
+    }
+    
+    private func weekRow(for offset: Int) -> some View {
+        let days = weekDaysForOffset(offset)
+        return HStack(spacing: 6) {
+            ForEach(days, id: \.self) { date in
+                let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
+                dayCell(date: date, isSelected: isSelected)
+            }
+        }
+    }
+    
+    private func weekDaysForOffset(_ offset: Int) -> [Date] {
         let today = calendar.startOfDay(for: Date())
         let weekday = calendar.component(.weekday, from: today)
-        guard let currentWeekStart = calendar.date(byAdding: .day, value: -(weekday - 1), to: today) else { return }
-        guard let targetWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentWeekStart) else { return }
+        guard let currentWeekStart = calendar.date(byAdding: .day, value: -(weekday - 1), to: today) else {
+            return []
+        }
+        guard let targetWeekStart = calendar.date(byAdding: .weekOfYear, value: offset, to: currentWeekStart) else {
+            return []
+        }
+        return (0..<7).compactMap { day in
+            calendar.date(byAdding: .day, value: day, to: targetWeekStart)
+        }
+    }
+    
+    private func dayCell(date: Date, isSelected: Bool) -> some View {
+        let dayLetter = dayLetter(for: date)
+        let dayNumber = calendar.component(.day, from: date)
         
-        // Select the same weekday in the new week
-        let targetWeekday = selectedWeekday
-        guard let newDate = calendar.date(byAdding: .day, value: targetWeekday - 1, to: targetWeekStart) else { return }
-        selectedDate = newDate
+        return Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                selectedDate = date
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Text(dayLetter)
+                    .font(.paceRounded(size: 10, weight: .medium))
+                
+                Text("\(dayNumber)")
+                    .font(.paceRounded(size: 16, weight: .bold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(isSelected ? 
+                        Color(red: 0.9, green: 0.35, blue: 0.25) : 
+                        Color(red: 0.15, green: 0.15, blue: 0.18)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func selectSundayOfCurrentWeek() {
+        let days = weekDaysForOffset(weekOffset)
+        if let sunday = days.first {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                selectedDate = sunday
+            }
+        }
+    }
+    
+    private func goToToday() {
+        weekOffset = 0
+        selectedDate = Date()
+        currentPage = 1
     }
     
     private func dayLetter(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = settings.language == .chinese ? Locale(identifier: "zh_CN") : Locale(identifier: "en_US")
-        
         if settings.language == .chinese {
-            // Chinese: use single character for weekday (日/一/二/三/四/五/六)
             let weekday = calendar.component(.weekday, from: date)
             let chineseWeekdays = ["日", "一", "二", "三", "四", "五", "六"]
             return chineseWeekdays[weekday - 1]
         } else {
-            // English: use short weekday name (Sun/Mon/Tue)
-            formatter.dateFormat = "EEE"
-            return formatter.string(from: date)
+            let weekday = calendar.component(.weekday, from: date)
+            let englishWeekdays = ["S", "M", "T", "W", "T", "F", "S"]
+            return englishWeekdays[weekday - 1]
         }
     }
+    
+    // MARK: - Remaining Section
     
     private var remainingSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(settings.localized(.consumed))
                 .font(.paceRounded(size: 20, weight: .bold))
-                .foregroundColor(textColor)
+                .foregroundColor(Color(.label))
             
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 nutritionBar(
                     label: settings.localized(.calories),
                     value: "\(totalCalories)",
                     unit: "Cal",
                     remainingValue: remainingCalories,
-                    color: Color(red: 1, green: 0.267, blue: 0),
+                    color: Color(hex: "F05A28"),
                     progress: caloriesProgress
                 )
                 
@@ -306,8 +421,17 @@ struct DailyFoodLogView: View {
                     value: "\(totalProtein)",
                     unit: "g",
                     remainingValue: remainingProtein,
-                    color: Color(red: 0.2, green: 0.68, blue: 0.38),
+                    color: Color(hex: "4CAF50"),
                     progress: proteinProgress
+                )
+                
+                nutritionBar(
+                    label: settings.localized(.carbsLabel),
+                    value: "\(totalCarbs)",
+                    unit: "g",
+                    remainingValue: remainingCarbs,
+                    color: Color(hex: "FFC107"),
+                    progress: carbsProgress
                 )
                 
                 nutritionBar(
@@ -315,7 +439,7 @@ struct DailyFoodLogView: View {
                     value: "\(totalFat)",
                     unit: "g",
                     remainingValue: remainingFat,
-                    color: Color(red: 0.996, green: 0.56, blue: 0.66),
+                    color: Color(hex: "E91E63"),
                     progress: fatProgress
                 )
             }
@@ -323,7 +447,7 @@ struct DailyFoodLogView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(cardBackgroundColor)
+                .fill(Color(.secondarySystemBackground))
         )
     }
     
@@ -336,15 +460,15 @@ struct DailyFoodLogView: View {
             HStack(alignment: .lastTextBaseline, spacing: 2) {
                 Text(value)
                     .font(.paceRounded(size: 16, weight: .bold))
-                    .foregroundColor(textColor)
+                    .foregroundColor(Color(.label))
                 Text(unit)
                     .font(.paceRounded(size: 11))
-                    .foregroundColor(secondaryTextColor)
+                    .foregroundColor(Color(.secondaryLabel))
             }
             
             Text("\(settings.localized(.remaining)): \(remainingValue)")
                 .font(.paceRounded(size: 11))
-                .foregroundColor(secondaryTextColor)
+                .foregroundColor(Color(.secondaryLabel))
             
             // Progress bar
             GeometryReader { geo in
@@ -364,11 +488,13 @@ struct DailyFoodLogView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     
+    // MARK: - Food Log Section
+    
     private var foodLogSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(settings.localized(.foodLog))
                 .font(.paceRounded(size: 20, weight: .bold))
-                .foregroundColor(textColor)
+                .foregroundColor(Color(.label))
             
             if selectedDateEntries.isEmpty {
                 emptyStateView
@@ -397,11 +523,11 @@ struct DailyFoodLogView: View {
         VStack(spacing: 12) {
             Image(systemName: "fork.knife.circle.fill")
                 .font(.system(size: 50))
-                .foregroundColor(secondaryTextColor.opacity(0.5))
+                .foregroundColor(Color(.tertiaryLabel))
             
             Text(emptyStateMessage)
                 .font(.paceRounded(size: 15, weight: .medium))
-                .foregroundColor(secondaryTextColor)
+                .foregroundColor(Color(.secondaryLabel))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -409,6 +535,9 @@ struct DailyFoodLogView: View {
     }
     
     private var emptyStateMessage: String {
+        let isSelectedPast = selectedDate < calendar.startOfDay(for: Date())
+        let isSelectedFuture = selectedDate > calendar.startOfDay(for: Date())
+        
         if isSelectedToday {
             return settings.localized(.noFoodToday)
         } else if isSelectedPast {
@@ -428,16 +557,6 @@ struct DailyFoodLogView: View {
 struct FoodLogCard: View {
     let entry: FoodEntry
     @Environment(\.colorScheme) private var colorScheme
-    
-    private var cardBackgroundColor: Color {
-        colorScheme == .dark
-            ? Color(.secondarySystemBackground)
-            : Color(.secondarySystemBackground)
-    }
-    
-    private var textColor: Color {
-        Color(.label)
-    }
     
     var body: some View {
         HStack(spacing: 16) {
@@ -460,51 +579,61 @@ struct FoodLogCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.name)
                     .font(.paceRounded(size: 16, weight: .semibold))
-                    .foregroundColor(textColor)
+                    .foregroundColor(Color(.label))
                     .lineLimit(1)
                 
                 Text(entry.portion)
                     .font(.paceRounded(size: 13))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
                     .lineLimit(1)
             }
             
             Spacer()
             
-            // Nutrition
-            VStack(alignment: .trailing, spacing: 6) {
+            // Nutrition (2x2 grid)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 4) {
                 HStack(spacing: 4) {
                     Image(systemName: "flame.fill")
-                        .font(.paceRounded(size: 10))
-                        .foregroundColor(Color(red: 1, green: 0.267, blue: 0))
-                    Text("\(entry.calories)Cal")
-                        .font(.paceRounded(size: 13, weight: .semibold))
-                        .foregroundColor(textColor)
+                        .font(.paceRounded(size: 9))
+                        .foregroundColor(Color(hex: "F05A28"))
+                    Text("\(entry.calories)")
+                        .font(.paceRounded(size: 11, weight: .semibold))
+                        .foregroundColor(Color(.label))
                 }
                 
                 HStack(spacing: 4) {
                     Image(systemName: "leaf.fill")
-                        .font(.paceRounded(size: 10))
-                        .foregroundColor(Color(red: 0.2, green: 0.68, blue: 0.38))
+                        .font(.paceRounded(size: 9))
+                        .foregroundColor(Color(hex: "4CAF50"))
                     Text("\(entry.protein)g")
-                        .font(.paceRounded(size: 12))
-                        .foregroundColor(.secondary)
+                        .font(.paceRounded(size: 11))
+                        .foregroundColor(Color(.secondaryLabel))
+                }
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "circle.hexagonpath.fill")
+                        .font(.paceRounded(size: 9))
+                        .foregroundColor(Color(hex: "FFC107"))
+                    Text("\(entry.carbs)g")
+                        .font(.paceRounded(size: 11))
+                        .foregroundColor(Color(.secondaryLabel))
                 }
                 
                 HStack(spacing: 4) {
                     Image(systemName: "drop.fill")
-                        .font(.paceRounded(size: 10))
-                        .foregroundColor(Color(red: 0.996, green: 0.56, blue: 0.66))
+                        .font(.paceRounded(size: 9))
+                        .foregroundColor(Color(hex: "E91E63"))
                     Text("\(entry.fat)g")
-                        .font(.paceRounded(size: 12))
-                        .foregroundColor(.secondary)
+                        .font(.paceRounded(size: 11))
+                        .foregroundColor(Color(.secondaryLabel))
                 }
             }
+            .frame(width: 100)
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(cardBackgroundColor)
+                .fill(Color(.secondarySystemBackground))
         )
     }
 }
@@ -544,14 +673,13 @@ struct FoodDetailSheet: View {
     @State private var editPortion: String = ""
     @State private var editCalories: String = ""
     @State private var editProtein: String = ""
+    @State private var editCarbs: String = ""
     @State private var editFat: String = ""
     
     private var settings: AppSettingsManager { AppSettingsManager.shared }
     
     private var textColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.996, green: 0.976, blue: 0.937)
-            : Color.primary
+        Color(.label)
     }
     
     var body: some View {
@@ -603,7 +731,7 @@ struct FoodDetailSheet: View {
                 }
             }
             .onAppear {
-                // 异步预加载图片，避免主线程卡顿
+                // Async preload image
                 DispatchQueue.global(qos: .userInitiated).async {
                     if let image = entry.cutoutImage {
                         DispatchQueue.main.async {
@@ -637,35 +765,43 @@ struct FoodDetailSheet: View {
                 .font(.paceRounded(size: 28, weight: .black))
                 .foregroundColor(textColor)
             
-            // Nutrition Info
-            HStack(spacing: 32) {
+            // Nutrition Info (4 items in 2x2 grid)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                 nutritionItem(
                     icon: "flame.fill",
                     value: "\(entry.calories)",
                     unit: "Cal",
-                    color: Color(red: 1, green: 0.267, blue: 0)
+                    color: Color(hex: "F05A28")
                 )
                 
                 nutritionItem(
                     icon: "leaf.fill",
                     value: "\(entry.protein)",
                     unit: "g",
-                    color: Color(red: 0.2, green: 0.68, blue: 0.38)
+                    color: Color(hex: "4CAF50")
+                )
+                
+                nutritionItem(
+                    icon: "circle.hexagonpath.fill",
+                    value: "\(entry.carbs)",
+                    unit: "g",
+                    color: Color(hex: "FFC107")
                 )
                 
                 nutritionItem(
                     icon: "drop.fill",
                     value: "\(entry.fat)",
                     unit: "g",
-                    color: Color(red: 0.996, green: 0.56, blue: 0.66)
+                    color: Color(hex: "E91E63")
                 )
             }
+            .padding(.horizontal, 40)
             
             // Portion
             HStack {
                 Text(settings.localized(.portion))
                     .font(.paceRounded(size: 16))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
                 Text(entry.portion)
                     .font(.paceRounded(size: 16, weight: .semibold))
                     .foregroundColor(textColor)
@@ -675,7 +811,7 @@ struct FoodDetailSheet: View {
             // Timestamp
             Text(formattedTime)
                 .font(.paceRounded(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundColor(Color(.secondaryLabel))
                 .padding(.top, 16)
         }
     }
@@ -686,7 +822,7 @@ struct FoodDetailSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(settings.localized(.name))
                     .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
                 TextField(settings.localized(.foodNamePlaceholder), text: $editName)
                     .font(.paceRounded(.body))
                     .textFieldStyle(.roundedBorder)
@@ -696,7 +832,7 @@ struct FoodDetailSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(settings.localized(.portion))
                     .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
                 TextField("e.g. 1 bowl", text: $editPortion)
                     .font(.paceRounded(.body))
                     .textFieldStyle(.roundedBorder)
@@ -706,11 +842,15 @@ struct FoodDetailSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(settings.localized(.nutrition))
                     .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
                 
                 HStack(spacing: 12) {
                     nutritionTextField(title: settings.localized(.calories), value: $editCalories, unit: "")
                     nutritionTextField(title: settings.localized(.proteinLabel), value: $editProtein, unit: "g")
+                }
+                
+                HStack(spacing: 12) {
+                    nutritionTextField(title: settings.localized(.carbsLabel), value: $editCarbs, unit: "g")
                     nutritionTextField(title: settings.localized(.fatLabel), value: $editFat, unit: "g")
                 }
             }
@@ -723,7 +863,7 @@ struct FoodDetailSheet: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.paceRounded(size: 12))
-                .foregroundColor(.secondary)
+                .foregroundColor(Color(.secondaryLabel))
             HStack(spacing: 4) {
                 TextField("0", text: value)
                     .font(.paceRounded(.body))
@@ -732,7 +872,7 @@ struct FoodDetailSheet: View {
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.paceRounded(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Color(.secondaryLabel))
                 }
             }
         }
@@ -744,6 +884,7 @@ struct FoodDetailSheet: View {
         editPortion = entry.portion
         editCalories = String(entry.calories)
         editProtein = String(entry.protein)
+        editCarbs = String(entry.carbs)
         editFat = String(entry.fat)
         isEditing = true
     }
@@ -752,6 +893,7 @@ struct FoodDetailSheet: View {
         // Validate inputs
         guard let calories = Int(editCalories),
               let protein = Int(editProtein),
+              let carbs = Int(editCarbs),
               let fat = Int(editFat),
               !editName.isEmpty else {
             // Invalid input - just cancel edit mode for now
@@ -765,6 +907,7 @@ struct FoodDetailSheet: View {
         entry.portion = editPortion
         entry.calories = calories
         entry.protein = protein
+        entry.carbs = carbs
         entry.fat = fat
         
         // Save context
@@ -798,7 +941,7 @@ struct FoodDetailSheet: View {
                     .foregroundColor(textColor)
                 Text(unit)
                     .font(.paceRounded(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
             }
         }
     }
@@ -820,14 +963,13 @@ struct FoodDetailPage: View {
     @State private var editPortion: String = ""
     @State private var editCalories: String = ""
     @State private var editProtein: String = ""
+    @State private var editCarbs: String = ""
     @State private var editFat: String = ""
     
     private var settings: AppSettingsManager { AppSettingsManager.shared }
     
     private var textColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.996, green: 0.976, blue: 0.937)
-            : Color.primary
+        Color(.label)
     }
     
     var body: some View {
@@ -915,35 +1057,43 @@ struct FoodDetailPage: View {
                 .font(.paceRounded(size: 28, weight: .black))
                 .foregroundColor(textColor)
             
-            // Nutrition Info
-            HStack(spacing: 32) {
+            // Nutrition Info (2x2 grid)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                 nutritionItem(
                     icon: "flame.fill",
                     value: "\(entry.calories)",
                     unit: "Cal",
-                    color: Color(red: 1, green: 0.267, blue: 0)
+                    color: Color(hex: "F05A28")
                 )
                 
                 nutritionItem(
                     icon: "leaf.fill",
                     value: "\(entry.protein)",
                     unit: "g",
-                    color: Color(red: 0.2, green: 0.68, blue: 0.38)
+                    color: Color(hex: "4CAF50")
+                )
+                
+                nutritionItem(
+                    icon: "circle.hexagonpath.fill",
+                    value: "\(entry.carbs)",
+                    unit: "g",
+                    color: Color(hex: "FFC107")
                 )
                 
                 nutritionItem(
                     icon: "drop.fill",
                     value: "\(entry.fat)",
                     unit: "g",
-                    color: Color(red: 0.996, green: 0.56, blue: 0.66)
+                    color: Color(hex: "E91E63")
                 )
             }
+            .padding(.horizontal, 60)
             
             // Portion
             HStack {
                 Text(settings.localized(.portion))
                     .font(.paceRounded(size: 16))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
                 Text(entry.portion)
                     .font(.paceRounded(size: 16, weight: .semibold))
                     .foregroundColor(textColor)
@@ -953,7 +1103,7 @@ struct FoodDetailPage: View {
             // Timestamp
             Text(formattedTime)
                 .font(.paceRounded(size: 14))
-                .foregroundColor(.secondary)
+                .foregroundColor(Color(.secondaryLabel))
                 .padding(.top, 16)
         }
     }
@@ -964,7 +1114,7 @@ struct FoodDetailPage: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(settings.localized(.name))
                     .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
                 TextField(settings.localized(.foodNamePlaceholder), text: $editName)
                     .font(.paceRounded(.body))
                     .textFieldStyle(.roundedBorder)
@@ -974,7 +1124,7 @@ struct FoodDetailPage: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(settings.localized(.portion))
                     .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
                 TextField("e.g. 1 bowl", text: $editPortion)
                     .font(.paceRounded(.body))
                     .textFieldStyle(.roundedBorder)
@@ -984,11 +1134,15 @@ struct FoodDetailPage: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(settings.localized(.nutrition))
                     .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
                 
                 HStack(spacing: 12) {
                     nutritionTextField(title: settings.localized(.calories), value: $editCalories, unit: "")
                     nutritionTextField(title: settings.localized(.proteinLabel), value: $editProtein, unit: "g")
+                }
+                
+                HStack(spacing: 12) {
+                    nutritionTextField(title: settings.localized(.carbsLabel), value: $editCarbs, unit: "g")
                     nutritionTextField(title: settings.localized(.fatLabel), value: $editFat, unit: "g")
                 }
             }
@@ -1001,7 +1155,7 @@ struct FoodDetailPage: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.paceRounded(size: 12))
-                .foregroundColor(.secondary)
+                .foregroundColor(Color(.secondaryLabel))
             HStack(spacing: 4) {
                 TextField("0", text: value)
                     .font(.paceRounded(.body))
@@ -1010,7 +1164,7 @@ struct FoodDetailPage: View {
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.paceRounded(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(Color(.secondaryLabel))
                 }
             }
         }
@@ -1022,6 +1176,7 @@ struct FoodDetailPage: View {
         editPortion = entry.portion
         editCalories = String(entry.calories)
         editProtein = String(entry.protein)
+        editCarbs = String(entry.carbs)
         editFat = String(entry.fat)
         isEditing = true
     }
@@ -1029,6 +1184,7 @@ struct FoodDetailPage: View {
     private func saveChanges() {
         guard let calories = Int(editCalories),
               let protein = Int(editProtein),
+              let carbs = Int(editCarbs),
               let fat = Int(editFat),
               !editName.isEmpty else {
             isEditing = false
@@ -1040,6 +1196,7 @@ struct FoodDetailPage: View {
         entry.portion = editPortion
         entry.calories = calories
         entry.protein = protein
+        entry.carbs = carbs
         entry.fat = fat
         
         do {
@@ -1072,7 +1229,7 @@ struct FoodDetailPage: View {
                     .foregroundColor(textColor)
                 Text(unit)
                     .font(.paceRounded(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Color(.secondaryLabel))
             }
         }
     }
