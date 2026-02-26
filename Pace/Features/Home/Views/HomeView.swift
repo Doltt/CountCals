@@ -14,6 +14,7 @@ struct HomeView: View {
     @State private var viewModel = DashboardViewModel()
     @State private var showingActivityPicker = false
     @State private var showingProfile = false
+    @State private var showingDailyFoodLog = false
     @Environment(\.colorScheme) private var colorScheme
     private var settings: AppSettingsManager { AppSettingsManager.shared }
     
@@ -36,19 +37,21 @@ struct HomeView: View {
             Color(.systemBackground).ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header: Activity Level selector
-                activityLevelHeader
-                    .padding(.top, 80)
-                    .opacity(hasAppeared ? 1 : 0)
-                    .offset(y: hasAppeared ? 0 : -20)
-                    .animation(.easeOut(duration: 0.4).delay(0.1), value: hasAppeared)
-                
                 // Main visualization: Bars
                 mainVisualization
-                    .padding(.top, 40)
+                    .padding(.top, 60)
                     .scaleEffect(hasAppeared ? 1 : 0.8)
                     .opacity(hasAppeared ? 1 : 0)
                     .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2), value: hasAppeared)
+                    .gesture(
+                        DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                            .onEnded { value in
+                                if value.translation.width > 0 {
+                                    // Swipe from left to right
+                                    showingDailyFoodLog = true
+                                }
+                            }
+                    )
                 
                 Spacer()
                 
@@ -85,6 +88,10 @@ struct HomeView: View {
             .presentationDetents([.height(320)])
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showingDailyFoodLog) {
+            DailyFoodLogView()
+                .environment(\.font, Font.system(.body, design: .rounded))
+        }
     }
     
     // MARK: - Colors
@@ -99,40 +106,21 @@ struct HomeView: View {
     
     // MARK: - Subviews
     
-    private var activityLevelHeader: some View {
-        Button {
-            showingActivityPicker = true
-        } label: {
-            HStack(spacing: 8) {
-                Text(settings.localized(viewModel.activityLevel.localizedKey))
-                    .font(.paceRounded(size: 40, weight: .black))
-                    .foregroundColor(textColor)
-                    .contentTransition(.numericText())
-                
-                Image(systemName: "chevron.right")
-                    .font(.paceRounded(.caption))
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-    
     private var mainVisualization: some View {
-        Button {
-            showingProfile = true
-        } label: {
-            DashboardBarsView(
-                consumedCalories: consumedCalories,
-                totalCalories: viewModel.dailyCalories,
-                consumedProtein: viewModel.consumedProtein(from: allEntries),
-                totalProtein: viewModel.dailyProtein,
-                consumedCarbs: viewModel.consumedCarbs(from: allEntries),
-                totalCarbs: viewModel.dailyCarbs,
-                consumedFat: viewModel.consumedFat(from: allEntries),
-                totalFat: viewModel.dailyFat
-            )
-        }
-        .buttonStyle(.plain)
+        DashboardBarsView(
+            consumedCalories: consumedCalories,
+            totalCalories: viewModel.dailyCalories,
+            consumedProtein: viewModel.consumedProtein(from: allEntries),
+            totalProtein: viewModel.dailyProtein,
+            consumedCarbs: viewModel.consumedCarbs(from: allEntries),
+            totalCarbs: viewModel.dailyCarbs,
+            consumedFat: viewModel.consumedFat(from: allEntries),
+            totalFat: viewModel.dailyFat,
+            activityLevel: viewModel.activityLevel,
+            onActivityLevelTap: {
+                showingActivityPicker = true
+            }
+        )
     }
     
 
