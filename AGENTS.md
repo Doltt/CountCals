@@ -1,4 +1,4 @@
-# Pace iOS App
+# countCals iOS App
 
 > **Agent Guide**: 这是模块化架构的 Pace 项目。每个模块有独立的 `AGENTS.md`，修改前请先阅读对应模块的文档。
 
@@ -13,7 +13,7 @@
 > **禁止未经确认直接修改代码。**
 
 ## 项目概述
-Pace 是一款 iOS 卡路里追踪应用，使用 SwiftUI + SwiftData 构建。
+countCals 是一款 iOS 卡路里追踪应用，使用 SwiftUI + SwiftData 构建。
 
 ## 技术栈
 - **UI Framework**: SwiftUI (iOS 26.2+)
@@ -24,9 +24,9 @@ Pace 是一款 iOS 卡路里追踪应用，使用 SwiftUI + SwiftData 构建。
 ## 模块结构
 
 ```
-Pace/
+countCals/
 ├── App/                    # 应用入口和根导航
-│   ├── PaceApp.swift
+│   ├── CountCalsApp.swift
 │   ├── ContentView.swift
 │   └── AGENTS.md
 ├── Features/               # 功能模块（按功能分组）
@@ -94,14 +94,14 @@ App (ContentView)
 xcrun devicectl list devices
 
 # 2. 编译（真机）
-xcodebuild -project Pace.xcodeproj -scheme Pace -destination "platform=iOS,id=DEVICE_ID" build
+xcodebuild -project countCals.xcodeproj -scheme countCals -destination "platform=iOS,id=DEVICE_ID" build
 
 # 3. 安装
 xcrun devicectl device install app --device "DEVICE_UUID" \
   ~/Library/Developer/Xcode/DerivedData/Pace-*/Build/Products/Debug-iphoneos/Pace.app
 
 # 4. 启动
-xcrun devicectl device process launch --device "DEVICE_UUID" com.tree.Pace
+xcrun devicectl device process launch --device "DEVICE_UUID" com.tree.countCals
 ```
 
 #### 检查清单（必须完成）

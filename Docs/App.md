@@ -25,4 +25,4 @@ ContentView (ZStack)
 ## 注意事项
 - 悬浮按钮固定在右下角，橙色胶囊样式
 - 添加食物后自动切换回 Home Tab
-- 支持 URL Scheme (pace://add-food) 从 Live Activity 跳转
+- 支持 URL Scheme (countcals://add-food) 从 Live Activity 跳转

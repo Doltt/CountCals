@@ -1,4 +1,4 @@
-# Pace
+# countCals
 
 一款简洁的 iOS 卡路里追踪应用，使用 AI 识别食物并自动计算营养摄入。
 
@@ -23,7 +23,7 @@
 项目采用模块化架构，按功能分组：
 
 ```
-Pace/
+countCals/
 ├── App/              # 应用入口 (TabView 导航)
 ├── Features/         # 功能模块
 │   ├── Home/         # 首页/仪表盘
@@ -40,7 +40,7 @@ Pace/
 
 ### 构建
 ```bash
-xcodebuild -project Pace.xcodeproj -scheme Pace -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' build
+xcodebuild -project countCals.xcodeproj -scheme countCals -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
 ### 架构说明
