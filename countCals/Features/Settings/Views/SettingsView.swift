@@ -39,7 +39,7 @@ struct SettingsView: View {
             }
             .padding()
         }
-        .background(Color(.systemBackground))
+        .background(Color(.systemBackground).ignoresSafeArea())
         .sheet(isPresented: $showingLanguagePicker) {
             LanguagePickerSheet(settings: settings)
                 .presentationDetents([.height(280)])

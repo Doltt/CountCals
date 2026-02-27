@@ -37,5 +37,10 @@
 	<string>保存食物贴纸到相册</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UILaunchScreen</key>
+		<dict/>
+	</dict>
 </dict>
 </plist>

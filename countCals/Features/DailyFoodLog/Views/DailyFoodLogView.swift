@@ -148,7 +148,7 @@ struct DailyFoodLogView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 100)
             }
-            .background(Color(.systemBackground))
+            .background(Color(.systemBackground).ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // Share button on leading side
