@@ -165,20 +165,27 @@ final class FoodCameraViewModel {
     
     /// Called when shutter button is pressed
     func capturePhoto(_ image: UIImage) {
+        print("[FoodCameraViewModel] 📸 capturePhoto called, image size: \(image.size)")
         capturedImage = image
         state = .capturing
         isExtractingCutout = true
+        print("[FoodCameraViewModel] State changed to: \(state)")
 
         // Brief delay for capture animation, then show preview
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             self?.state = .preview
+            print("[FoodCameraViewModel] State changed to: \(self?.state ?? .camera)")
             self?.startCutoutExtraction()
         }
     }
 
     /// Extract cutout and outline in preview state
     private func startCutoutExtraction() {
-        guard let image = capturedImage else { return }
+        guard let image = capturedImage else {
+            print("[FoodCameraViewModel] ❌ Cannot extract cutout - capturedImage is nil")
+            return
+        }
+        print("[FoodCameraViewModel] 🔍 Starting cutout extraction for image: \(image.size)")
 
         Task {
             // Extract cutout and outline in parallel
@@ -186,6 +193,7 @@ final class FoodCameraViewModel {
             async let outlineTask = cutoutService.generateStickerOutline(from: image, outlineWidth: 28)
             
             let (cutout, outline) = await (cutoutTask, outlineTask)
+            print("[FoodCameraViewModel] ✅ Cutout extraction complete - cutout: \(cutout != nil ? "success" : "nil"), outline: \(outline != nil ? "success" : "nil")")
 
             await MainActor.run {
                 self.cutoutImage = cutout
@@ -197,22 +205,30 @@ final class FoodCameraViewModel {
 
     /// User confirms the preview and proceeds to AI recognition
     func confirmPreview() {
+        print("[FoodCameraViewModel] 👆 confirmPreview called")
         state = .processing
+        print("[FoodCameraViewModel] State changed to: \(state)")
         startProcessing()
     }
 
     /// Start AI processing with real API call
     private func startProcessing() {
         // Use cutout image for recognition if available, otherwise original
-        guard let imageToRecognize = cutoutImage ?? capturedImage else { return }
+        guard let imageToRecognize = cutoutImage ?? capturedImage else {
+            print("[FoodCameraViewModel] ❌ Cannot start processing - no image available")
+            return
+        }
+        print("[FoodCameraViewModel] 🤖 Starting AI recognition...")
         
         Task {
             do {
                 let response = try await recognitionService.recognizeFood(from: imageToRecognize)
+                print("[FoodCameraViewModel] ✅ Recognition success: \(response.localizedName)")
                 await MainActor.run {
                     completeProcessing(with: response)
                 }
             } catch {
+                print("[FoodCameraViewModel] ❌ Recognition failed: \(error)")
                 await MainActor.run {
                     handleRecognitionError(error)
                 }
@@ -264,7 +280,8 @@ final class FoodCameraViewModel {
     
     /// Handle recognition errors - map to status and show sticker with humor
     private func handleRecognitionError(_ error: Error) {
-        print("[FoodCameraViewModel] Recognition failed: \(error.localizedDescription)")
+        print("[FoodCameraViewModel] ⚠️ Recognition error: \(error.localizedDescription)")
+        print("[FoodCameraViewModel] Error type: \(type(of: error))")
         
         // Map error to recognition status
         let status: RecognitionStatus
@@ -300,6 +317,7 @@ final class FoodCameraViewModel {
     
     /// Retake photo
     func retake() {
+        print("[FoodCameraViewModel] 🔄 Retake called")
         capturedImage = nil
         cutoutImage = nil
         outlineImage = nil
@@ -307,6 +325,7 @@ final class FoodCameraViewModel {
         isExtractingCutout = false
         isRetrying = false
         state = .camera
+        print("[FoodCameraViewModel] State reset to: \(state)")
     }
     
     /// Enter editing mode
@@ -349,7 +368,12 @@ final class FoodCameraViewModel {
     
     /// Create food entry from current result
     func createFoodEntry() -> FoodEntry? {
-        guard let result = recognitionResult else { return nil }
+        print("[FoodCameraViewModel] 📝 createFoodEntry called")
+        guard let result = recognitionResult else {
+            print("[FoodCameraViewModel] ❌ Cannot create entry - recognitionResult is nil")
+            return nil
+        }
+        print("[FoodCameraViewModel] Creating entry for: \(result.name)")
         
         // Save cutout image as PNG data (preserves transparency)
         var imageData: Data? = nil

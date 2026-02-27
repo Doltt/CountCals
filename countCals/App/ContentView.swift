@@ -38,7 +38,9 @@ struct ContentView: View {
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
         
         .fullScreenCover(isPresented: $showingAddFood) {
-            AddFoodView(onAddSuccess: {
+            print("[ContentView] 🎯 Presenting AddFoodView")
+            return AddFoodView(onAddSuccess: {
+                print("[ContentView] ✅ AddFoodView completed, switching to Food Log")
                 // After adding food, jump to Daily Food Log
                 selectedTab = 2
             })

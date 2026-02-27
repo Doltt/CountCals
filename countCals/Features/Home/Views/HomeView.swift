@@ -128,6 +128,7 @@ struct HomeView: View {
     
     private var addFoodButton: some View {
         Button {
+            print("[HomeView] 👆 Add Food button tapped, calling onAddFood()")
             onAddFood()
         } label: {
             Text(settings.localized(.addFood))

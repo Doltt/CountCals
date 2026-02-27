@@ -22,11 +22,13 @@ struct CustomCameraPreview: View {
     var body: some View {
         ZStack {
             // Camera preview (only show if session is available)
-            if let session = cameraManager.session {
-                CameraPreviewLayer(session: session)
-                    .ignoresSafeArea()
-            } else {
-                Color.black.ignoresSafeArea()
+            Group {
+                if let session = cameraManager.session {
+                    CameraPreviewLayer(session: session)
+                        .ignoresSafeArea()
+                } else {
+                    Color.black.ignoresSafeArea()
+                }
             }
 
             // Flash overlay for capture feedback
@@ -54,10 +56,12 @@ struct CustomCameraPreview: View {
             }
         }
         .onAppear {
+            print("[CustomCameraPreview] onAppear - starting camera session")
             cameraManager.startSession()
             startCornerAnimation()
         }
         .onDisappear {
+            print("[CustomCameraPreview] onDisappear - stopping camera session")
             cameraManager.stopSession()
         }
         .onChange(of: selectedPhotoItem) { _, newValue in
@@ -408,14 +412,21 @@ final class CameraManager: NSObject {
     
     override init() {
         super.init()
+        print("[CameraManager] Initializing...")
         setupSession()
     }
     
     private func setupSession() {
+        print("[CameraManager] Setting up session...")
         // Check camera availability BEFORE creating session
-        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-              let input = try? AVCaptureDeviceInput(device: camera) else {
-            print("[CameraManager] Camera unavailable (simulator or no permission)")
+        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+            print("[CameraManager] ❌ Camera unavailable - no wide angle camera found")
+            return
+        }
+        print("[CameraManager] Found camera: \(camera.localizedName)")
+        
+        guard let input = try? AVCaptureDeviceInput(device: camera) else {
+            print("[CameraManager] ❌ Failed to create input - permission denied or simulator")
             return
         }
         
@@ -426,27 +437,52 @@ final class CameraManager: NSObject {
         
         if captureSession.canAddInput(input) {
             captureSession.addInput(input)
+            print("[CameraManager] ✅ Input added to session")
+        } else {
+            print("[CameraManager] ❌ Cannot add input to session")
         }
         
         if captureSession.canAddOutput(photoOutput) {
             captureSession.addOutput(photoOutput)
+            print("[CameraManager] ✅ Photo output added to session")
+        } else {
+            print("[CameraManager] ❌ Cannot add photo output to session")
         }
         
         captureSession.commitConfiguration()
         self.session = captureSession
+        print("[CameraManager] ✅ Session configured successfully")
     }
     
     func startSession() {
-        guard let session, !session.isRunning else { return }
+        guard let session else {
+            print("[CameraManager] ❌ Cannot start - session is nil")
+            return
+        }
+        guard !session.isRunning else {
+            print("[CameraManager] Session already running")
+            return
+        }
+        print("[CameraManager] Starting session...")
         DispatchQueue.global(qos: .userInitiated).async {
             session.startRunning()
+            print("[CameraManager] ✅ Session started")
         }
     }
     
     func stopSession() {
-        guard let session, session.isRunning else { return }
+        guard let session else {
+            print("[CameraManager] ❌ Cannot stop - session is nil")
+            return
+        }
+        guard session.isRunning else {
+            print("[CameraManager] Session already stopped")
+            return
+        }
+        print("[CameraManager] Stopping session...")
         DispatchQueue.global(qos: .userInitiated).async {
             session.stopRunning()
+            print("[CameraManager] ✅ Session stopped")
         }
     }
     

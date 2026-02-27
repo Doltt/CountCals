@@ -20,7 +20,8 @@ struct FoodCameraView: View {
     @State private var showSuccess = false
 
     var body: some View {
-        ZStack {
+        print("[FoodCameraView] Rendering with state: \(viewModel.state)")
+        return ZStack {
             switch viewModel.state {
             case .camera, .capturing:
                 cameraView
@@ -92,7 +93,8 @@ struct FoodCameraView: View {
     // MARK: - Camera View
 
     private var cameraView: some View {
-        CustomCameraPreview(
+        print("[FoodCameraView] Creating camera view")
+        return CustomCameraPreview(
             onCapture: { image in
                 viewModel.capturePhoto(image)
             },

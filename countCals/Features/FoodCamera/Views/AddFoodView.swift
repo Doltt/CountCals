@@ -11,8 +11,14 @@ import SwiftData
 struct AddFoodView: View {
     var onAddSuccess: (() -> Void)?
     
+    init(onAddSuccess: (() -> Void)? = nil) {
+        self.onAddSuccess = onAddSuccess
+        print("[AddFoodView] ✅ Initialized")
+    }
+    
     var body: some View {
-        FoodCameraView(onAddSuccess: onAddSuccess)
+        print("[AddFoodView] 🎬 Creating FoodCameraView")
+        return FoodCameraView(onAddSuccess: onAddSuccess)
     }
 }
 
