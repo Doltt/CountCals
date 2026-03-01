@@ -8,7 +8,7 @@ import SwiftUI
 import UIKit
 
 struct SettingsView: View {
-    @State private var settings = AppSettingsManager.shared
+    @Bindable private var settings = AppSettingsManager.shared
     @State private var showingLanguagePicker = false
     @State private var showingThemePicker = false
     @State private var showingOnboarding = false
@@ -49,6 +49,7 @@ struct SettingsView: View {
             ThemePickerSheet(settings: settings)
                 .presentationDetents([.height(320)])
                 .presentationDragIndicator(.visible)
+                .preferredColorScheme(settings.theme.colorScheme)
         }
         .sheet(isPresented: $showingBodyData) {
             ProfileView(viewModel: viewModel)

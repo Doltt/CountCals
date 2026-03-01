@@ -10,8 +10,8 @@ import SwiftData
 
 @main
 struct CountCalsApp: App {
+    @Bindable private var settings = AppSettingsManager.shared
     @State private var showingAddFood = false
-    @State private var settings = AppSettingsManager.shared
     @State private var hasCompletedOnboarding = AppSettingsManager.shared.hasCompletedOnboarding
     
     var sharedModelContainer: ModelContainer = {
@@ -32,7 +32,6 @@ struct CountCalsApp: App {
             Group {
                 if hasCompletedOnboarding {
                     ContentView(externalShowAddFood: $showingAddFood)
-                        .preferredColorScheme(settings.theme.colorScheme)
                         .environment(\.font, Font.system(.body, design: .rounded))
                         .onOpenURL { url in
                             handleURL(url)
@@ -43,6 +42,8 @@ struct CountCalsApp: App {
                         .environment(\.font, Font.system(.body, design: .rounded))
                 }
             }
+            .preferredColorScheme(settings.theme.colorScheme)
+            .id(settings.theme)
         }
         .modelContainer(sharedModelContainer)
     }

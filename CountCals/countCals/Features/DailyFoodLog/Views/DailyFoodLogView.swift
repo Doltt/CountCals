@@ -15,6 +15,9 @@ struct DailyFoodLogView: View {
     @State private var viewModel = DailyFoodLogViewModel()
     private var settings: AppSettingsManager { AppSettingsManager.shared }
     
+    @Binding var hasPushedView: Bool
+    @Binding var triggerPop: Bool
+    
     // Selected date (default today)
     @State private var selectedDate = Date()
     
@@ -43,8 +46,13 @@ struct DailyFoodLogView: View {
     @State private var shareImage: UIImage? = nil
     @State private var isGeneratingCollage = false
     
-    init() {
+    init(
+        hasPushedView: Binding<Bool> = .constant(false),
+        triggerPop: Binding<Bool> = .constant(false)
+    ) {
         _allEntries = Query(sort: \FoodEntry.timestamp, order: .reverse)
+        _hasPushedView = hasPushedView
+        _triggerPop = triggerPop
     }
     
     private var calendar: Calendar { Calendar.current }
@@ -201,6 +209,18 @@ struct DailyFoodLogView: View {
                     ShareSheet(activityItems: [image])
                         .presentationDetents([.medium, .large])
                 }
+            }
+            .onChange(of: navigationPath) { _, newPath in
+                hasPushedView = !newPath.isEmpty
+            }
+            .onChange(of: triggerPop) { _, newValue in
+                if newValue {
+                    navigationPath = NavigationPath()
+                    triggerPop = false
+                }
+            }
+            .onAppear {
+                hasPushedView = !navigationPath.isEmpty
             }
         }
     }
@@ -957,29 +977,29 @@ struct FoodDetailSheet: View {
         NavigationStack {
             ZStack {
                 Color(.systemBackground).ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 24) {
-                        if isEditing {
-                            editForm
-                        } else {
-                            detailContent
-                        }
+                if isEditing {
+                    editForm
+                } else {
+                    ScrollView {
+                        detailContent
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            }
+                            .safeAreaInset(edge: .bottom, spacing: 0) {
+                                Color.clear.frame(height: 24)
+                            }
                     }
-                    .padding()
-                    .frame(minHeight: UIScreen.main.bounds.height - 100)
+                    .scrollDismissesKeyboard(.interactively)
                 }
             }
             .navigationTitle(isEditing ? settings.localized(.editFood) : settings.localized(.foodInfo))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    if isEditing {
-                        Button(settings.localized(.cancel)) {
-                            isEditing = false
-                        }
-                        .font(.paceRounded(.body))
-                    } else {
+                    if !isEditing {
                         Button(action: { dismiss() }) {
                             Image(systemName: "xmark")
                                 .font(.paceRounded(.body, weight: .semibold))
@@ -989,10 +1009,12 @@ struct FoodDetailSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isEditing {
-                        Button(settings.localized(.save)) {
+                        Button {
                             saveChanges()
+                        } label: {
+                            Image(systemName: "checkmark")
+                                .font(.paceRounded(.body, weight: .semibold))
                         }
-                        .font(.paceRounded(.body, weight: .semibold))
                     } else {
                         Button(settings.localized(.edit)) {
                             startEditing()
@@ -1002,152 +1024,109 @@ struct FoodDetailSheet: View {
                 }
             }
             .onAppear {
-                // Async preload image
                 DispatchQueue.global(qos: .userInitiated).async {
                     if let image = entry.cutoutImage {
-                        DispatchQueue.main.async {
-                            self.loadedImage = image
-                        }
+                        DispatchQueue.main.async { self.loadedImage = image }
                     }
                 }
             }
+            .preferredColorScheme(settings.theme.colorScheme)
         }
     }
     
     private var detailContent: some View {
-        VStack(spacing: 24) {
-            // Sticker Image
+        let stickerMaxW: CGFloat = 340
+        let stickerMaxH: CGFloat = 408
+        return VStack(spacing: 24) {
             if let image = loadedImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: 450, maxHeight: 520)
-                    .shadow(color: Color(.label).opacity(0.15), radius: 12, y: 6)
+                StickerImageView(cutoutImage: image, outlineImage: nil, maxWidth: stickerMaxW, maxHeight: stickerMaxH)
             } else if entry.cutoutImageData == nil {
                 Text(entry.emoji)
                     .font(.system(size: 120))
             } else {
                 ProgressView()
-                    .frame(width: 250, height: 250)
+                    .frame(width: 160, height: 160)
             }
-            
-            // Food Name
             Text(entry.name)
                 .font(.paceRounded(size: 28, weight: .black))
                 .foregroundColor(textColor)
-            
-            // Nutrition Info (4 items in 2x2 grid)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+                .multilineTextAlignment(.center)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                nutritionItem(
-                    icon: "flame.fill",
-                    value: "\(entry.calories)",
-                    unit: "Cal",
-                    color: Color(hex: "F05A28")
-                )
-                
-                nutritionItem(
-                    icon: "leaf.fill",
-                    value: "\(entry.protein)",
-                    unit: "g",
-                    color: Color(hex: "4CAF50")
-                )
-                
-                nutritionItem(
-                    icon: "circle.hexagonpath.fill",
-                    value: "\(entry.carbs)",
-                    unit: "g",
-                    color: Color(hex: "FFC107")
-                )
-                
-                nutritionItem(
-                    icon: "drop.fill",
-                    value: "\(entry.fat)",
-                    unit: "g",
-                    color: Color(hex: "E91E63")
-                )
+                nutritionItem(icon: "flame.fill", value: "\(entry.calories)", unit: "Cal", color: Color(hex: "F05A28"))
+                nutritionItem(icon: "leaf.fill", value: "\(entry.protein)", unit: "g", color: Color(hex: "4CAF50"))
+                nutritionItem(icon: "circle.hexagonpath.fill", value: "\(entry.carbs)", unit: "g", color: Color(hex: "FFC107"))
+                nutritionItem(icon: "drop.fill", value: "\(entry.fat)", unit: "g", color: Color(hex: "E91E63"))
             }
             .padding(.horizontal, 40)
-            
-            // Portion
-            HStack {
+            HStack(alignment: .top) {
                 Text(settings.localized(.portion))
                     .font(.paceRounded(size: 16))
                     .foregroundColor(Color(.secondaryLabel))
                 Text(entry.portion)
                     .font(.paceRounded(size: 16, weight: .semibold))
                     .foregroundColor(textColor)
+                    .lineLimit(2)
             }
             .padding(.top, 8)
-            
-            // Timestamp
             Text(formattedTime)
                 .font(.paceRounded(size: 14))
                 .foregroundColor(Color(.secondaryLabel))
                 .padding(.top, 16)
         }
+        .frame(minHeight: 200)
     }
     
     private var editForm: some View {
-        VStack(spacing: 20) {
-            // Name field
-            VStack(alignment: .leading, spacing: 8) {
-                Text(settings.localized(.name))
-                    .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabel))
+        Form {
+            Section(settings.localized(.name)) {
                 TextField(settings.localized(.foodNamePlaceholder), text: $editName)
                     .font(.paceRounded(.body))
-                    .textFieldStyle(.roundedBorder)
             }
-            
-            // Portion field
-            VStack(alignment: .leading, spacing: 8) {
-                Text(settings.localized(.portion))
-                    .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabel))
-                TextField("e.g. 1 bowl", text: $editPortion)
+            Section(settings.localized(.portion)) {
+                TextField(settings.localized(.portionPlaceholder), text: $editPortion)
                     .font(.paceRounded(.body))
-                    .textFieldStyle(.roundedBorder)
             }
-            
-            // Nutrition fields
-            VStack(alignment: .leading, spacing: 8) {
-                Text(settings.localized(.nutrition))
-                    .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabel))
-                
-                HStack(spacing: 12) {
-                    nutritionTextField(title: settings.localized(.calories), value: $editCalories, unit: "")
-                    nutritionTextField(title: settings.localized(.proteinLabel), value: $editProtein, unit: "g")
+            Section(settings.localized(.nutrition)) {
+                HStack {
+                    Text(settings.localized(.calories))
+                    Spacer()
+                    TextField("0", text: $editCalories)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.paceRounded(.body))
                 }
-                
-                HStack(spacing: 12) {
-                    nutritionTextField(title: settings.localized(.carbsLabel), value: $editCarbs, unit: "g")
-                    nutritionTextField(title: settings.localized(.fatLabel), value: $editFat, unit: "g")
+                HStack {
+                    Text(settings.localized(.proteinLabel))
+                    Spacer()
+                    TextField("0", text: $editProtein)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.paceRounded(.body))
+                    Text("g").foregroundStyle(.secondary)
                 }
-            }
-            
-            Spacer()
-        }
-    }
-    
-    private func nutritionTextField(title: String, value: Binding<String>, unit: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.paceRounded(size: 12))
-                .foregroundColor(Color(.secondaryLabel))
-            HStack(spacing: 4) {
-                TextField("0", text: value)
-                    .font(.paceRounded(.body))
-                    .textFieldStyle(.roundedBorder)
-                    .keyboardType(.numberPad)
-                if !unit.isEmpty {
-                    Text(unit)
-                        .font(.paceRounded(size: 12))
-                        .foregroundColor(Color(.secondaryLabel))
+                HStack {
+                    Text(settings.localized(.carbsLabel))
+                    Spacer()
+                    TextField("0", text: $editCarbs)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.paceRounded(.body))
+                    Text("g").foregroundStyle(.secondary)
+                }
+                HStack {
+                    Text(settings.localized(.fatLabel))
+                    Spacer()
+                    TextField("0", text: $editFat)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.paceRounded(.body))
+                    Text("g").foregroundStyle(.secondary)
                 }
             }
         }
-        .frame(maxWidth: .infinity)
+        .scrollDismissesKeyboard(.interactively)
     }
     
     private func startEditing() {
@@ -1246,36 +1225,35 @@ struct FoodDetailPage: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-            
-            ScrollView {
-                VStack(spacing: 24) {
-                    if isEditing {
-                        editForm
-                    } else {
-                        detailContent
-                    }
+            if isEditing {
+                editForm
+            } else {
+                ScrollView {
+                    detailContent
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        }
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            Color.clear.frame(height: 24)
+                        }
                 }
-                .padding()
-                .frame(minHeight: UIScreen.main.bounds.height - 100)
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .navigationTitle(isEditing ? settings.localized(.editFood) : settings.localized(.foodInfo))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                if isEditing {
-                    Button(settings.localized(.cancel)) {
-                        isEditing = false
-                    }
-                    .font(.paceRounded(.body))
-                }
-            }
             ToolbarItem(placement: .confirmationAction) {
                 if isEditing {
-                    Button(settings.localized(.save)) {
+                    Button {
                         saveChanges()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.paceRounded(.body, weight: .semibold))
                     }
-                    .font(.paceRounded(.body, weight: .semibold))
                 } else {
                     HStack(spacing: 16) {
                         Button(role: .destructive) {
@@ -1286,7 +1264,6 @@ struct FoodDetailPage: View {
                                 .font(.paceRounded(.body, weight: .semibold))
                                 .foregroundStyle(.red)
                         }
-                        
                         Button(settings.localized(.edit)) {
                             startEditing()
                         }
@@ -1296,150 +1273,106 @@ struct FoodDetailPage: View {
             }
         }
         .onAppear {
-            DispatchQueue.global(qos: .userInitiated).async {
-                if let image = entry.cutoutImage {
-                    DispatchQueue.main.async {
-                        self.loadedImage = image
-                    }
-                }
+            if let image = entry.cutoutImage {
+                loadedImage = image
             }
         }
+        .preferredColorScheme(settings.theme.colorScheme)
     }
     
     private var detailContent: some View {
-        VStack(spacing: 24) {
-            // Sticker Image
+        let stickerMaxW: CGFloat = 340
+        let stickerMaxH: CGFloat = 408
+        return VStack(spacing: 24) {
             if let image = loadedImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: 450, maxHeight: 520)
-                    .shadow(color: Color(.label).opacity(0.15), radius: 12, y: 6)
+                StickerImageView(cutoutImage: image, outlineImage: nil, maxWidth: stickerMaxW, maxHeight: stickerMaxH)
             } else if entry.cutoutImageData == nil {
                 Text(entry.emoji)
                     .font(.system(size: 120))
             } else {
                 ProgressView()
-                    .frame(width: 250, height: 250)
+                    .frame(width: 160, height: 160)
             }
-            
-            // Food Name
             Text(entry.name)
                 .font(.paceRounded(size: 28, weight: .black))
                 .foregroundColor(textColor)
-            
-            // Nutrition Info (2x2 grid)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+                .multilineTextAlignment(.center)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                nutritionItem(
-                    icon: "flame.fill",
-                    value: "\(entry.calories)",
-                    unit: "Cal",
-                    color: Color(hex: "F05A28")
-                )
-                
-                nutritionItem(
-                    icon: "leaf.fill",
-                    value: "\(entry.protein)",
-                    unit: "g",
-                    color: Color(hex: "4CAF50")
-                )
-                
-                nutritionItem(
-                    icon: "circle.hexagonpath.fill",
-                    value: "\(entry.carbs)",
-                    unit: "g",
-                    color: Color(hex: "FFC107")
-                )
-                
-                nutritionItem(
-                    icon: "drop.fill",
-                    value: "\(entry.fat)",
-                    unit: "g",
-                    color: Color(hex: "E91E63")
-                )
+                nutritionItem(icon: "flame.fill", value: "\(entry.calories)", unit: "Cal", color: Color(hex: "F05A28"))
+                nutritionItem(icon: "leaf.fill", value: "\(entry.protein)", unit: "g", color: Color(hex: "4CAF50"))
+                nutritionItem(icon: "circle.hexagonpath.fill", value: "\(entry.carbs)", unit: "g", color: Color(hex: "FFC107"))
+                nutritionItem(icon: "drop.fill", value: "\(entry.fat)", unit: "g", color: Color(hex: "E91E63"))
             }
-            .padding(.horizontal, 60)
-            
-            // Portion
-            HStack {
+            .padding(.horizontal, 40)
+            HStack(alignment: .top) {
                 Text(settings.localized(.portion))
                     .font(.paceRounded(size: 16))
                     .foregroundColor(Color(.secondaryLabel))
                 Text(entry.portion)
                     .font(.paceRounded(size: 16, weight: .semibold))
                     .foregroundColor(textColor)
+                    .lineLimit(2)
             }
             .padding(.top, 8)
-            
-            // Timestamp
             Text(formattedTime)
                 .font(.paceRounded(size: 14))
                 .foregroundColor(Color(.secondaryLabel))
                 .padding(.top, 16)
         }
+        .frame(minHeight: 200)
     }
     
     private var editForm: some View {
-        VStack(spacing: 20) {
-            // Name field
-            VStack(alignment: .leading, spacing: 8) {
-                Text(settings.localized(.name))
-                    .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabel))
+        Form {
+            Section(settings.localized(.name)) {
                 TextField(settings.localized(.foodNamePlaceholder), text: $editName)
                     .font(.paceRounded(.body))
-                    .textFieldStyle(.roundedBorder)
             }
-            
-            // Portion field
-            VStack(alignment: .leading, spacing: 8) {
-                Text(settings.localized(.portion))
-                    .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabel))
-                TextField("e.g. 1 bowl", text: $editPortion)
+            Section(settings.localized(.portion)) {
+                TextField(settings.localized(.portionPlaceholder), text: $editPortion)
                     .font(.paceRounded(.body))
-                    .textFieldStyle(.roundedBorder)
             }
-            
-            // Nutrition fields
-            VStack(alignment: .leading, spacing: 8) {
-                Text(settings.localized(.nutrition))
-                    .font(.paceRounded(size: 14, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabel))
-                
-                HStack(spacing: 12) {
-                    nutritionTextField(title: settings.localized(.calories), value: $editCalories, unit: "")
-                    nutritionTextField(title: settings.localized(.proteinLabel), value: $editProtein, unit: "g")
+            Section(settings.localized(.nutrition)) {
+                HStack {
+                    Text(settings.localized(.calories))
+                    Spacer()
+                    TextField("0", text: $editCalories)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.paceRounded(.body))
                 }
-                
-                HStack(spacing: 12) {
-                    nutritionTextField(title: settings.localized(.carbsLabel), value: $editCarbs, unit: "g")
-                    nutritionTextField(title: settings.localized(.fatLabel), value: $editFat, unit: "g")
+                HStack {
+                    Text(settings.localized(.proteinLabel))
+                    Spacer()
+                    TextField("0", text: $editProtein)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.paceRounded(.body))
+                    Text("g").foregroundStyle(.secondary)
                 }
-            }
-            
-            Spacer()
-        }
-    }
-    
-    private func nutritionTextField(title: String, value: Binding<String>, unit: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.paceRounded(size: 12))
-                .foregroundColor(Color(.secondaryLabel))
-            HStack(spacing: 4) {
-                TextField("0", text: value)
-                    .font(.paceRounded(.body))
-                    .textFieldStyle(.roundedBorder)
-                    .keyboardType(.numberPad)
-                if !unit.isEmpty {
-                    Text(unit)
-                        .font(.paceRounded(size: 12))
-                        .foregroundColor(Color(.secondaryLabel))
+                HStack {
+                    Text(settings.localized(.carbsLabel))
+                    Spacer()
+                    TextField("0", text: $editCarbs)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.paceRounded(.body))
+                    Text("g").foregroundStyle(.secondary)
+                }
+                HStack {
+                    Text(settings.localized(.fatLabel))
+                    Spacer()
+                    TextField("0", text: $editFat)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.paceRounded(.body))
+                    Text("g").foregroundStyle(.secondary)
                 }
             }
         }
-        .frame(maxWidth: .infinity)
+        .scrollDismissesKeyboard(.interactively)
     }
     
     private func startEditing() {

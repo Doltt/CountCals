@@ -76,6 +76,26 @@ final class AppSettingsManager {
     var theme: AppTheme {
         didSet {
             UserDefaults.standard.set(theme.rawValue, forKey: "appTheme")
+            applyThemeToWindows()
+        }
+    }
+    
+    private func applyThemeToWindows() {
+        let style: UIUserInterfaceStyle
+        switch theme {
+        case .system: style = .unspecified
+        case .light: style = .light
+        case .dark: style = .dark
+        }
+        
+        DispatchQueue.main.async {
+            for scene in UIApplication.shared.connectedScenes {
+                if let windowScene = scene as? UIWindowScene {
+                    for window in windowScene.windows {
+                        window.overrideUserInterfaceStyle = style
+                    }
+                }
+            }
         }
     }
     
@@ -103,6 +123,11 @@ final class AppSettingsManager {
             langRaw = (code == "zh") ? AppLanguage.chinese.rawValue : AppLanguage.english.rawValue
         }
         self.language = AppLanguage(rawValue: langRaw) ?? .english
+        
+        // Apply theme on app launch (after a short delay to ensure windows are ready)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            Self.shared.applyThemeToWindows()
+        }
     }
     
     // MARK: - Localized Strings
@@ -200,6 +225,7 @@ enum LocalizedKey {
     case foodInfo
     case macrosGrams
     case foodNamePlaceholder  // TextField placeholder
+    case portionPlaceholder  // e.g. "e.g. 1 bowl"
     // Feedback
     case feedbackContent
     case feedbackHint
@@ -325,6 +351,7 @@ enum LocalizedKey {
         case .foodInfo: return "Food Info"
         case .macrosGrams: return "Macros (grams)"
         case .foodNamePlaceholder: return "Food name"
+        case .portionPlaceholder: return "e.g. 1 bowl"
         case .feedbackContent: return "Feedback"
         case .feedbackHint: return "Your feedback helps us improve."
         case .feedbackPlaceholder: return "Describe your feedback or issue…"
@@ -449,6 +476,7 @@ enum LocalizedKey {
         case .foodInfo: return "食物信息"
         case .macrosGrams: return "宏量 (克)"
         case .foodNamePlaceholder: return "食物名称"
+        case .portionPlaceholder: return "例如 1 碗"
         case .feedbackContent: return "反馈内容"
         case .feedbackHint: return "你的意见对我们很有帮助。"
         case .feedbackPlaceholder: return "请描述你的建议或问题…"

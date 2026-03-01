@@ -10,6 +10,7 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @Bindable private var settings = AppSettingsManager.shared
     @State private var selectedTab = 1
     @State private var showingAddFood = false
     @Binding var externalShowAddFood: Bool
@@ -36,6 +37,7 @@ struct ContentView: View {
                 .tag(2)
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        .preferredColorScheme(settings.theme.colorScheme)
         
         .fullScreenCover(isPresented: $showingAddFood) {
             print("[ContentView] 🎯 Presenting AddFoodView")

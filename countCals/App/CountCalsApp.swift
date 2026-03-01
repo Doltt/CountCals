@@ -10,8 +10,8 @@ import SwiftData
 
 @main
 struct CountCalsApp: App {
+    @Bindable private var settings = AppSettingsManager.shared
     @State private var showingAddFood = false
-    @State private var settings = AppSettingsManager.shared
     @State private var hasCompletedOnboarding = AppSettingsManager.shared.hasCompletedOnboarding
     
     var sharedModelContainer: ModelContainer = {

@@ -326,46 +326,6 @@ struct CapturePreviewView: View {
     }
 }
 
-// MARK: - Sticker Image View (Reusable)
-
-/// Displays a cutout image with sticker-style white border.
-/// Uses pre-generated outline for high-quality edge rendering.
-struct StickerImageView: View {
-    let cutoutImage: UIImage
-    let outlineImage: UIImage?
-    var maxWidth: CGFloat = 600
-    var maxHeight: CGFloat = 700
-    
-    var body: some View {
-        ZStack {
-            // White outline (pre-generated or fallback)
-            if let outline = outlineImage {
-                // High-quality pre-rendered outline
-                Image(uiImage: outline)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: maxWidth, maxHeight: maxHeight)
-            } else {
-                // Fallback: SwiftUI-based outline (lower quality)
-                Image(uiImage: cutoutImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: maxWidth, maxHeight: maxHeight)
-                    .colorMultiply(.white)
-                    .blur(radius: 3)
-                    .scaleEffect(1.04)
-            }
-            
-            // Main cutout image on top
-            Image(uiImage: cutoutImage)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(maxWidth: maxWidth, maxHeight: maxHeight)
-        }
-        .shadow(color: .black.opacity(0.15), radius: 10, y: 5)
-    }
-}
-
 // MARK: - Preview
 
 #Preview {
