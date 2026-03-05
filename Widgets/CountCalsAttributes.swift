@@ -1,6 +1,6 @@
 //
 //  PaceActivityAttributes.swift
-//  PaceWidgets
+//  Pace
 //
 //  Shared ActivityAttributes for Live Activity.
 //

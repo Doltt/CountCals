@@ -1,98 +1,87 @@
-# countCals 隐私政策
+# Baguette Privacy Policy
 
-**最后更新：** 2025 年 [填写日期]  
-**生效范围：** countCals iOS 应用（以下简称「本应用」）
-
----
-
-## 1. 概述
-
-countCals 是一款卡路里与营养追踪应用。我们重视您的隐私：**本应用不要求注册账号，且我们不会将您的个人数据上传至我们的服务器。** 本政策说明本应用在您设备上收集、使用与存储的数据及原因。
+**Last updated:** March 2025  
+**Scope:** Baguette iOS app (the "App")
 
 ---
 
-## 2. 我们收集或使用的数据
+## 1. Overview
 
-### 2.1 食物照片（相机）
-
-- **用途：** 仅在您使用「拍照识别食物」功能时，用于在您设备上进行 AI 食物识别与营养估算。
-- **处理方式：** 照片在设备本地处理，**不会保存到本应用内，也不会上传至任何服务器或第三方。** 识别完成后，照片即不再被保留。
-- **权限：** 仅在您授权「相机」权限后使用；您可随时在系统设置中关闭。
-
-### 2.2 相册（可选）
-
-- **用途：** 若您选择将「食物贴纸」等内容保存到相册，我们会请求「添加到相册」权限，仅用于将您选择的内容写入您的相册。
-- **处理方式：** 我们不会读取或上传您相册中的其他内容。
-- **权限：** 您可随时在系统设置中关闭。
-
-### 2.3 食物记录与营养数据
-
-- **内容：** 您添加的食物条目、卡路里及营养估算结果。
-- **存储：** 仅存储在您设备的本地数据库（SwiftData）中，**不会上传至我们的服务器或第三方。**
-
-### 2.4 身体数据与设置
-
-- **内容：** 如身高、体重、活动等级、每日卡路里目标等（若您在使用相关功能时填写）。
-- **存储：** 仅存储在您设备的本地（如 UserDefaults），**不会上传至我们的服务器或第三方。**
-
-### 2.5 实时活动（Live Activity）与小组件
-
-- **内容：** 您当日的卡路里/营养进度会在系统「实时活动」与小组件中展示。
-- **处理方式：** 数据仅来自您设备上的本地存储，在系统提供的界面中展示，**不会通过实时活动或小组件向我们的服务器或第三方发送数据。**
+Baguette is a calorie and nutrition tracking app. We respect your privacy: **the App does not require an account, and we do not upload your personal data to our servers.** This policy describes what data the App collects, uses, and stores on your device, and why.
 
 ---
 
-## 3. 我们不收集的内容
+## 2. Data We Collect or Use
 
-- 我们不收集您的姓名、邮箱、电话、账号或登录信息（本应用无账号系统）。
-- 我们不收集您的位置信息。
-- 我们不将食物照片或任何识别结果上传至我们的服务器或用于训练外部模型。
-- 我们不在本应用中嵌入第三方分析、广告或追踪 SDK（如无另行说明）。
+### 2.1 Food Photos (Camera)
 
----
+- **Purpose:** Used only when you use the "scan food" feature for on-device AI food recognition and nutrition estimation.
+- **Processing:** Photos are processed on your device only. **They are not saved within the App and are not uploaded to any server or third party.** After recognition, the photos are not retained.
+- **Permission:** Used only after you grant camera access; you can revoke it anytime in system settings.
 
-## 4. 数据存储与保留
+### 2.2 Photo Library (Optional)
 
-- 所有上述数据均保存在您的 iPhone / iPad 上。
-- 当您**卸载本应用**时，系统会删除应用及其本地数据，我们处不保留任何副本。
-- 我们无法访问、删除或恢复您设备上的数据；若您需要清除数据，请卸载应用或在应用内删除相应记录（若提供该功能）。
+- **Purpose:** If you choose to save "food stickers" or similar content to your photo library, we request "Add to Photo Library" permission only to write that content to your library.
+- **Processing:** We do not read or upload other content from your photo library.
+- **Permission:** You can revoke it anytime in system settings.
 
----
+### 2.3 Food Log and Nutrition Data
 
-## 5. 儿童隐私
+- **Content:** Food entries you add, calorie and nutrition estimates.
+- **Storage:** Stored only in your device’s local database (SwiftData). **Not uploaded to our servers or any third party.**
 
-本应用不面向 13 周岁（或您所在司法辖区规定的更高年龄）以下用户。我们不会故意收集儿童的个人信息。
+### 2.4 Body Data and Settings
 
----
+- **Content:** Data such as height, weight, activity level, and daily calorie goals when you use those features.
+- **Storage:** Stored only on your device (e.g. UserDefaults). **Not uploaded to our servers or any third party.**
 
-## 6. 政策更新
+### 2.5 Live Activity and Widgets
 
-我们可能会不定期更新本隐私政策。更新后会在本页面注明「最后更新」日期。若变更涉及您已提供数据的用途发生重大变化，我们会在应用内或通过本页面进行显著提示。继续使用本应用即表示您接受更新后的政策。
-
----
-
-## 7. 联系我们
-
-若您对本隐私政策或本应用的数据做法有疑问，请通过以下方式联系我们：
-
-- **邮箱：** [请填写您的联系邮箱]  
-- **支持页面：** [请填写您的支持/反馈 URL，可与 App Store 中的支持 URL 一致]
+- **Content:** Your daily calorie/nutrition progress may be shown in the system Live Activity and widgets.
+- **Processing:** Data comes only from local storage on your device and is displayed in system-provided interfaces. **Live Activity and widgets do not send data to our servers or any third party.**
 
 ---
 
-## 附录：隐私政策 URL 与托管方式
+## 3. What We Do Not Collect
 
-**将本政策放在 Notion 上并用作 App Store / 应用内链接是否可行？**  
-**可行。** Apple 仅要求隐私政策为**可公网访问的稳定 URL**，不限定托管平台。Notion 常被用于此用途。
+- We do not collect your name, email, phone number, account or login information (the App has no account system).
+- We do not collect your location.
+- We do not upload food photos or any recognition results to our servers or use them to train external models.
+- We do not embed third-party analytics, advertising, or tracking SDKs in the App (unless otherwise stated).
 
-**Notion 操作建议：**
+---
 
-1. 新建页面，将本文内容粘贴或同步到 Notion。
-2. 点击右上角 **Share** → **Publish to web** → 开启 **Publish**。
-3. 复制生成的 **Public link**（形如 `https://xxx.notion.site/...` 或 `https://www.notion.so/...`）。
-4. 将该链接填入：
-   - App Store Connect → App 信息 → **隐私政策 URL**；
-   - 应用内「设置」或「关于」中的隐私政策链接（若有）。
-5. **注意：** 若之后在 Notion 中移动页面、更换 Workspace 或复制页面，链接可能变化，需在 App Store Connect 和应用内同步更新。建议将该页面固定、少动，或备份同一份内容到稳定域名下以备替换。
+## 4. Data Storage and Retention
 
-*本政策以中文撰写；若存在其他语言版本，以中文版为准。*
+- All data described above is stored on your iPhone or iPad.
+- When you **uninstall the App**, the system removes the App and its local data; we do not keep any copy.
+- We cannot access, delete, or recover data on your device. To clear data, uninstall the App or delete the relevant records in the App if that option is available.
+
+---
+
+## 5. Children’s Privacy
+
+The App is not directed at users under 13 (or the higher age required in your jurisdiction). We do not knowingly collect personal information from children.
+
+---
+
+## 6. Policy Updates
+
+We may update this privacy policy from time to time. The "Last updated" date at the top will be revised when we do. If a change materially affects how we use data you have already provided, we will notify you in the App or on this page. Continued use of the App after an update means you accept the revised policy.
+
+---
+
+## 7. Contact Us
+
+If you have questions about this privacy policy or the App’s data practices, contact us at:
+
+- **Email:** dumbpoplar@gmail.com  
+- **Support:** You may use the same email or the support URL listed in the App Store listing.
+
+---
+
+## Appendix: Hosting This Policy
+
+Apple requires a **publicly accessible, stable URL** for your privacy policy; the hosting platform is not specified. You can publish this page on Notion, your own site, or another host, then use that URL in App Store Connect and in the App (e.g. in Settings or About) if you link to the policy there.
+
+*This policy is written in English and is the primary version.*
