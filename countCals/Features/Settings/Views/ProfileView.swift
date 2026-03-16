@@ -22,6 +22,7 @@ struct ProfileView: View {
     // MARK: - Editing State
     @State private var editingField: EditingField? = nil
     @State private var tempInput: String = ""
+    @State private var showingFormulaDetail = false
     @FocusState private var isInputFocused: Bool
     
     enum EditingField: Identifiable {
@@ -107,6 +108,11 @@ struct ProfileView: View {
             }
         }
         .onAppear(perform: loadingProfile)
+        .sheet(isPresented: $showingFormulaDetail) {
+            FormulaDetailSheet()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(item: $editingField) { field in
             NumberInputSheet(
                 title: inputSheetTitle(for: field),
@@ -289,10 +295,21 @@ struct ProfileView: View {
                 )
             }
             
-            Text(settings.localized(.bmrTdeeHint))
-                .font(.paceRounded(.caption))
-                .foregroundStyle(.secondary)
+            Button {
+                showingFormulaDetail = true
+            } label: {
+                HStack(spacing: 4) {
+                    Text(settings.localized(.bmrTdeeHint))
+                        .font(.paceRounded(.caption))
+                        .foregroundStyle(.secondary)
+                    
+                    Image(systemName: "info.circle")
+                        .font(.paceRounded(.caption))
+                        .foregroundStyle(.blue)
+                }
                 .padding(.horizontal, 4)
+            }
+            .buttonStyle(.plain)
         }
     }
     
@@ -593,6 +610,173 @@ private struct NumberInputSheet: View {
                     .font(.paceRounded(.body, weight: .semibold))
                 }
             }
+        }
+    }
+}
+
+// MARK: - Formula Detail Sheet
+
+private struct FormulaDetailSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    private var settings: AppSettingsManager { AppSettingsManager.shared }
+    
+    private func L(_ key: LocalizedKey) -> String {
+        settings.localized(key)
+    }
+    
+    private var cardBackground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.15, green: 0.15, blue: 0.16)
+            : Color(.secondarySystemBackground)
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // BMR Section
+                    formulaSection(
+                        title: "BMR",
+                        subtitle: L(.bmrFullName),
+                        icon: "bed.double.fill",
+                        color: .orange,
+                        content: {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(L(.bmrFormula))
+                                    .font(.paceRounded(.subheadline, weight: .semibold))
+                                    .foregroundStyle(.primary)
+                                
+                                Text(L(.bmrFormulaMale))
+                                    .font(.paceRounded(.caption))
+                                    .foregroundStyle(.secondary)
+                                
+                                Text(L(.bmrFormulaFemale))
+                                    .font(.paceRounded(.caption))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    )
+                    
+                    // TDEE Section
+                    formulaSection(
+                        title: "TDEE",
+                        subtitle: L(.tdeeFullName),
+                        icon: "flame.fill",
+                        color: .red,
+                        content: {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(L(.tdeeFormula))
+                                    .font(.paceRounded(.subheadline, weight: .semibold))
+                                    .foregroundStyle(.primary)
+                                
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(L(.activityMultipliers))
+                                        .font(.paceRounded(.caption, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Text(L(.activityMultiplierLow))
+                                        .font(.paceRounded(.caption))
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Text(L(.activityMultiplierMedium))
+                                        .font(.paceRounded(.caption))
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Text(L(.activityMultiplierHigh))
+                                        .font(.paceRounded(.caption))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    )
+                    
+                    // References Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "book.closed.fill")
+                                .font(.paceRounded(.caption, weight: .semibold))
+                                .foregroundStyle(.purple)
+                            Text(L(.scientificReference))
+                                .font(.paceRounded(.subheadline, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.leading, 4)
+                        
+                        VStack(alignment: .leading, spacing: 12) {
+                            referenceItem(
+                                number: "1",
+                                text: L(.mifflinReference)
+                            )
+                            
+                            Divider()
+                            
+                            referenceItem(
+                                number: "2",
+                                text: L(.activityReference)
+                            )
+                        }
+                        .padding()
+                        .background(cardBackground, in: RoundedRectangle(cornerRadius: 16))
+                    }
+                }
+                .padding()
+            }
+            .background(Color(.systemBackground))
+            .navigationTitle(L(.howCalculated))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L(.done)) {
+                        dismiss()
+                    }
+                    .font(.paceRounded(.body, weight: .semibold))
+                }
+            }
+        }
+    }
+    
+    private func formulaSection<Content: View>(
+        title: String,
+        subtitle: String,
+        icon: String,
+        color: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.paceRounded(.caption, weight: .semibold))
+                    .foregroundStyle(color)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.paceRounded(.subheadline, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Text(subtitle)
+                        .font(.paceRounded(.caption))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.leading, 4)
+            
+            content()
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(cardBackground, in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+    
+    private func referenceItem(number: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("[\(number)]")
+                .font(.paceRounded(.caption, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 24, alignment: .leading)
+            
+            Text(text)
+                .font(.paceRounded(.caption))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

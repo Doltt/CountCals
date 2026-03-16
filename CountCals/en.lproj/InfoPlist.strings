@@ -1,0 +1,10 @@
+/* English localization for Info.plist */
+
+/* Camera permission */
+"NSCameraUsageDescription" = "Camera access is needed to take photos of your food for calorie tracking.";
+
+/* Photo library permission */
+"NSPhotoLibraryAddUsageDescription" = "Photo library access is needed to save food stickers.";
+
+/* App display name */
+"CFBundleDisplayName" = "BaguetteCal";

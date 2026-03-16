@@ -101,6 +101,8 @@ struct SettingsView: View {
                     .padding()
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(L(.bodyData))
+                .accessibilityHint(L(.bodyDataSubtitle))
             }
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         }
@@ -162,6 +164,8 @@ struct SettingsView: View {
                     .padding()
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(L(.viewOnboarding))
+                .accessibilityHint(L(.viewOnboardingSubtitle))
             }
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         }
@@ -210,6 +214,8 @@ struct SettingsView: View {
                     .padding()
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(L(.language))
+                .accessibilityHint(L(.languageSubtitle))
                 
                 Divider()
                     .padding(.leading, 52)
@@ -247,6 +253,8 @@ struct SettingsView: View {
                     .padding()
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(L(.theme))
+                .accessibilityHint(L(.themeSubtitle))
             }
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
         }
@@ -291,6 +299,8 @@ struct SettingsView: View {
                     .padding()
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(L(.feedback))
+                .accessibilityHint(L(.feedbackSubtitle))
                 
                 Divider()
                     .padding(.leading, 52)

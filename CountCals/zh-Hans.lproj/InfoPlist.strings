@@ -1,0 +1,10 @@
+/* Chinese (Simplified) localization for Info.plist */
+
+/* Camera permission */
+"NSCameraUsageDescription" = "需要相机权限来拍摄食物照片进行卡路里追踪。";
+
+/* Photo library permission */
+"NSPhotoLibraryAddUsageDescription" = "需要相册权限来保存食物贴纸。";
+
+/* App display name */
+"CFBundleDisplayName" = "BaguetteCal";

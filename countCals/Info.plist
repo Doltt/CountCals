@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>countCals</string>
+	<string>BaguetteCal</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -34,9 +34,9 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSCameraUsageDescription</key>
-	<string>需要相机权限来拍摄食物照片</string>
+	<string>Camera access is needed to take photos of your food for calorie tracking.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>保存食物贴纸到相册</string>
+	<string>Photo library access is needed to save food stickers.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UILaunchScreen</key>

@@ -246,6 +246,30 @@ enum LocalizedKey {
     case noFoodThisDay
     case noFoodFuture
     case consumed
+    // Accessibility (VoiceOver labels/hints)
+    case accBack
+    case accChangeActivityLevel
+    case accCaloriesProgress
+    case accProteinProgress
+    case accCarbsProgress
+    case accFatProgress
+    case accCrop
+    case accShare
+    // Formula Details & Citations
+    case howCalculated
+    case bmrFullName
+    case bmrFormula
+    case bmrFormulaMale
+    case bmrFormulaFemale
+    case tdeeFullName
+    case tdeeFormula
+    case activityMultipliers
+    case activityMultiplierLow
+    case activityMultiplierMedium
+    case activityMultiplierHigh
+    case scientificReference
+    case mifflinReference
+    case activityReference
 
     var en: String {
         switch self {
@@ -368,6 +392,28 @@ enum LocalizedKey {
         case .noFoodThisDay: return "No food recorded on this day"
         case .noFoodFuture: return "This day hasn't arrived yet"
         case .consumed: return "Consumed"
+        case .accBack: return "Back"
+        case .accChangeActivityLevel: return "Double tap to change activity level"
+        case .accCaloriesProgress: return "Calories progress"
+        case .accProteinProgress: return "Protein progress"
+        case .accCarbsProgress: return "Carbs progress"
+        case .accFatProgress: return "Fat progress"
+        case .accCrop: return "Crop image"
+        case .accShare: return "Share"
+        case .howCalculated: return "How is this calculated?"
+        case .bmrFullName: return "Basal Metabolic Rate"
+        case .bmrFormula: return "BMR Formula (Mifflin-St Jeor)"
+        case .bmrFormulaMale: return "Male: 10 × weight(kg) + 6.25 × height(cm) − 5 × age + 5"
+        case .bmrFormulaFemale: return "Female: 10 × weight(kg) + 6.25 × height(cm) − 5 × age − 161"
+        case .tdeeFullName: return "Total Daily Energy Expenditure"
+        case .tdeeFormula: return "TDEE = BMR × Activity Multiplier"
+        case .activityMultipliers: return "Activity Multipliers"
+        case .activityMultiplierLow: return "Low (sedentary): × 1.2"
+        case .activityMultiplierMedium: return "Medium (moderate exercise): × 1.55"
+        case .activityMultiplierHigh: return "High (intense exercise): × 1.725"
+        case .scientificReference: return "Scientific References"
+        case .mifflinReference: return "Mifflin MD, et al. \"A new predictive equation for resting energy expenditure in healthy individuals.\" Am J Clin Nutr. 1990;51(2):241-247."
+        case .activityReference: return "\"Dietary Reference Intakes for Energy.\" National Academies Press, 2005."
         }
     }
 
@@ -492,6 +538,28 @@ enum LocalizedKey {
         case .noFoodThisDay: return "这一天没有记录"
         case .noFoodFuture: return "还没有到这一天"
         case .consumed: return "已摄入"
+        case .accBack: return "返回"
+        case .accChangeActivityLevel: return "双击可更改活动等级"
+        case .accCaloriesProgress: return "卡路里进度"
+        case .accProteinProgress: return "蛋白质进度"
+        case .accCarbsProgress: return "碳水进度"
+        case .accFatProgress: return "脂肪进度"
+        case .accCrop: return "裁切图片"
+        case .accShare: return "分享"
+        case .howCalculated: return "计算方式"
+        case .bmrFullName: return "基础代谢率"
+        case .bmrFormula: return "BMR 公式（Mifflin-St Jeor）"
+        case .bmrFormulaMale: return "男性：10 × 体重(kg) + 6.25 × 身高(cm) − 5 × 年龄 + 5"
+        case .bmrFormulaFemale: return "女性：10 × 体重(kg) + 6.25 × 身高(cm) − 5 × 年龄 − 161"
+        case .tdeeFullName: return "每日总能量消耗"
+        case .tdeeFormula: return "TDEE = BMR × 活动系数"
+        case .activityMultipliers: return "活动系数"
+        case .activityMultiplierLow: return "低（久坐）：× 1.2"
+        case .activityMultiplierMedium: return "中（适度运动）：× 1.55"
+        case .activityMultiplierHigh: return "高（高强度运动）：× 1.725"
+        case .scientificReference: return "科学参考文献"
+        case .mifflinReference: return "Mifflin MD 等人，《健康个体静息能量消耗的新预测方程》，美国临床营养学杂志，1990年第51卷第2期，241-247页。"
+        case .activityReference: return "《能量的膳食参考摄入量》，美国国家科学院出版社，2005年。"
         }
     }
 }
