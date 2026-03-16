@@ -1,4 +1,4 @@
-# Baguette Privacy Policy
+# BaguetteCal Privacy Policy
 
 **Last updated:** March 2025  
 **Scope:** Baguette iOS app (the "App")
@@ -75,7 +75,7 @@ We may update this privacy policy from time to time. The "Last updated" date at 
 
 If you have questions about this privacy policy or the App’s data practices, contact us at:
 
-- **Email:** dumbpoplar@gmail.com  
+- **Email:** [dumbpoplar@gmail.com](mailto:dumbpoplar@gmail.com)  
 - **Support:** You may use the same email or the support URL listed in the App Store listing.
 
 ---
