@@ -294,6 +294,7 @@ struct CapturePreviewView: View {
                     .frame(width: 50, height: 50)
                     .background(Color.black.opacity(0.3), in: Circle())
             }
+            .accessibilityLabel(AppSettingsManager.shared.localized(.retake))
 
             // Confirm button (checkmark with orange color)
             Button {
@@ -311,6 +312,7 @@ struct CapturePreviewView: View {
             }
             .disabled(isProcessing)
             .opacity(isProcessing ? 0.5 : 1.0)
+            .accessibilityLabel(AppSettingsManager.shared.localized(.confirm))
 
             // Crop button
             Button {
@@ -322,6 +324,7 @@ struct CapturePreviewView: View {
                     .frame(width: 50, height: 50)
                     .background(Color.black.opacity(0.3), in: Circle())
             }
+            .accessibilityLabel(AppSettingsManager.shared.localized(.accCrop))
         }
     }
 }

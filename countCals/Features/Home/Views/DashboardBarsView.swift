@@ -68,6 +68,8 @@ struct DashboardBarsView: View {
             .padding(.horizontal, 20)
         }
         .padding(.vertical, 20)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(settings.localized(.accCaloriesProgress)): \(consumedCalories) \(settings.localized(.consumed)), \(totalCalories) \(settings.localized(.calories)). \(settings.localized(.protein)): \(consumedProtein)g / \(totalProtein)g. \(settings.localized(.carbs)): \(consumedCarbs)g / \(totalCarbs)g. \(settings.localized(.fat)): \(consumedFat)g / \(totalFat)g")
     }
 }
 
@@ -79,6 +81,7 @@ struct CalorieWithActivityLevel: View {
     let progress: Double
     let activityLevel: UserProfile.ActivityLevel
     let onActivityLevelTap: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     private var settings: AppSettingsManager { AppSettingsManager.shared }
     
@@ -108,7 +111,7 @@ struct CalorieWithActivityLevel: View {
                         Capsule()
                             .fill(Color.orange)
                             .frame(width: geo.size.width * progress, height: 4)
-                            .animation(.spring(response: 0.6, dampingFraction: 0.75), value: progress)
+                            .animation(reduceMotion ? nil : .spring(response: 0.6, dampingFraction: 0.75), value: progress)
                     }
                 }
                 .frame(width: 120, height: 4)
@@ -131,6 +134,9 @@ struct CalorieWithActivityLevel: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(consumed) \(settings.localized(.caloriesConsumed)), \(total) \(settings.localized(.calories)). \(settings.localized(.activityLevel)): \(settings.localized(activityLevel.localizedKey))")
+        .accessibilityHint(settings.localized(.accChangeActivityLevel))
     }
 }
 
@@ -142,6 +148,7 @@ struct FoodBar: View {
     let label: String
     let imageName: String
     let height: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     private var settings: AppSettingsManager { AppSettingsManager.shared }
     
@@ -183,7 +190,7 @@ struct FoodBar: View {
                         }
                         .frame(height: height)
                     )
-                    .animation(.spring(response: 0.6, dampingFraction: 0.75), value: progress)
+                    .animation(reduceMotion ? nil : .spring(response: 0.6, dampingFraction: 0.75), value: progress)
             }
             .frame(width: 80, height: height)
             
@@ -197,6 +204,8 @@ struct FoodBar: View {
                 .font(.paceRounded(size: 11, weight: .medium))
                 .foregroundColor(Color(.tertiaryLabel))
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value) \(settings.localized(.consumed)), \(total)g")
     }
 }
 

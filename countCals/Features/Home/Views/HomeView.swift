@@ -16,6 +16,7 @@ struct HomeView: View {
     @State private var showingProfile = false
     @State private var showingDailyFoodLog = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var settings: AppSettingsManager { AppSettingsManager.shared }
     
     let onAddFood: () -> Void
@@ -40,9 +41,9 @@ struct HomeView: View {
                 // Main visualization: Bars
                 mainVisualization
                     .padding(.top, 20)
-                    .scaleEffect(hasAppeared ? 1 : 0.8)
+                    .scaleEffect(hasAppeared ? 1 : (reduceMotion ? 1 : 0.8))
                     .opacity(hasAppeared ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2), value: hasAppeared)
+                    .animation(reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.7).delay(0.2), value: hasAppeared)
                     .gesture(
                         DragGesture(minimumDistance: 50, coordinateSpace: .local)
                             .onEnded { value in
@@ -59,7 +60,7 @@ struct HomeView: View {
                 addFoodButton
                     .padding(.bottom, 30)
                     .opacity(hasAppeared ? 1 : 0)
-                    .animation(.easeOut(duration: 0.4).delay(0.5), value: hasAppeared)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.4).delay(0.5), value: hasAppeared)
             }
             .padding(.vertical, 20)
         }
@@ -143,6 +144,8 @@ struct HomeView: View {
         }
         .padding(.horizontal, 40)
         .padding(.bottom, 50)
+        .accessibilityLabel(settings.localized(.addFood))
+        .accessibilityHint("Double tap to add a food entry")
     }
 }
 

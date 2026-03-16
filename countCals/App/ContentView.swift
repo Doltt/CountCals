@@ -25,16 +25,22 @@ struct ContentView: View {
             // Left: Settings
             SettingsView()
                 .tag(0)
+                .accessibilityLabel(AppSettingsManager.shared.localized(.settingsTab))
+                .accessibilityAddTraits(selectedTab == 0 ? .isSelected : [])
             
             // Center: Home Dashboard
             HomeView(onAddFood: {
                 showingAddFood = true
             })
             .tag(1)
+            .accessibilityLabel(AppSettingsManager.shared.localized(.homeTab))
+            .accessibilityAddTraits(selectedTab == 1 ? .isSelected : [])
             
             // Right: Daily Food Log
             DailyFoodLogView()
                 .tag(2)
+                .accessibilityLabel(AppSettingsManager.shared.localized(.dailyFoodLog))
+                .accessibilityAddTraits(selectedTab == 2 ? .isSelected : [])
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
         .preferredColorScheme(settings.theme.colorScheme)

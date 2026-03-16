@@ -259,6 +259,7 @@ struct DailyFoodLogView: View {
                 .font(.paceRounded(.subheadline, weight: .semibold))
                 .foregroundStyle(Color(red: 1, green: 0.28, blue: 0.1))
         }
+        .accessibilityLabel(settings.localized(.today))
     }
     
     // Add button - native style matching ProfileView toolbar buttons
@@ -270,6 +271,7 @@ struct DailyFoodLogView: View {
                 .font(.paceRounded(.body, weight: .semibold))
                 .foregroundStyle(.primary)
         }
+        .accessibilityLabel(settings.localized(.addFood))
     }
     
     // Share button with loading state
@@ -290,6 +292,7 @@ struct DailyFoodLogView: View {
             }
         }
         .disabled(isGeneratingCollage)
+        .accessibilityLabel(settings.localized(.accShare))
     }
     
     // MARK: - Sticker Collage Generation

@@ -61,6 +61,7 @@ private struct OnboardingContentView: View {
                         .font(.paceRounded(.title3, weight: .semibold))
                         .foregroundColor(Color(.label))
                 }
+                .accessibilityLabel(AppSettingsManager.shared.localized(.accBack))
             }
         }
     }

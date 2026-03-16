@@ -10,6 +10,7 @@ import SwiftUI
 struct GuideOverlay: View {
     @Binding var isShowing: Bool
     let highlightFrames: [GuideHighlightTarget: CGRect]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     @State private var currentTip: GuideTip = .rings
     @State private var currentHighlightFrame: CGRect = .zero
@@ -89,8 +90,12 @@ struct GuideOverlay: View {
             }
         }()
         
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+        if reduceMotion {
             currentHighlightFrame = highlightFrames[target] ?? .zero
+        } else {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                currentHighlightFrame = highlightFrames[target] ?? .zero
+            }
         }
     }
     
@@ -166,7 +171,7 @@ struct GuideOverlay: View {
                         Circle()
                             .fill(tip == currentTip ? Color(red: 1, green: 0.267, blue: 0) : Color.white.opacity(0.3))
                             .frame(width: 8, height: 8)
-                            .animation(.spring(response: 0.3), value: currentTip)
+                            .animation(reduceMotion ? nil : .spring(response: 0.3), value: currentTip)
                     }
                 }
                 .padding(.top, 8)
@@ -185,6 +190,12 @@ struct GuideOverlay: View {
                                 .fill(Color(red: 1, green: 0.267, blue: 0))
                         )
                 }
+                .accessibilityLabel(isLastTip
+                    ? (settings.language == .chinese ? "开始探索" : "Start Exploring")
+                    : (settings.language == .chinese ? "下一步" : "Next"))
+                .accessibilityHint(isLastTip
+                    ? (settings.language == .chinese ? "双击关闭引导" : "Double tap to close guide")
+                    : (settings.language == .chinese ? "双击进入下一步" : "Double tap for next step"))
                 .padding(.top, 8)
             }
             .padding(24)

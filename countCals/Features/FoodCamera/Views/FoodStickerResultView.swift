@@ -106,6 +106,7 @@ struct FoodStickerResultView: View {
                     .font(.paceRounded(.title2))
                     .foregroundStyle(.primary)
             }
+            .accessibilityLabel(AppSettingsManager.shared.localized(.accBack))
 
             Spacer()
         }
