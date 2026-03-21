@@ -69,8 +69,12 @@ struct HomeView: View {
             DispatchQueue.main.async {
                 hasAppeared = true
             }
-            // Start Live Activity on app launch
-            viewModel.startLiveActivity(from: allEntries)
+            // Start Live Activity on app launch (avoid duplicate start races with update)
+            if !LiveActivityService.shared.isActive {
+                viewModel.startLiveActivity(from: allEntries)
+            } else {
+                viewModel.updateLiveActivity(from: allEntries)
+            }
         }
         .onChange(of: allEntries) { _, newEntries in
             // Update Live Activity when food entries change

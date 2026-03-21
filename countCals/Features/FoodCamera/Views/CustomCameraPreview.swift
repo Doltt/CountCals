@@ -406,96 +406,112 @@ final class CameraPreviewUIView: UIView {
 @Observable
 final class CameraManager: NSObject {
     private(set) var session: AVCaptureSession?
-    
+
     private let photoOutput = AVCapturePhotoOutput()
     private var captureCompletion: ((UIImage?) -> Void)?
-    
+    /// Serial queue for all AVCaptureSession configuration and start/stop/capture to avoid undefined reuse / races.
+    private let sessionQueue = DispatchQueue(label: "com.tree.countCals.camera.session")
+
     override init() {
         super.init()
         print("[CameraManager] Initializing...")
-        setupSession()
+        sessionQueue.async { [weak self] in
+            self?.configureSessionOnQueue()
+        }
     }
-    
-    private func setupSession() {
+
+    private func configureSessionOnQueue() {
         print("[CameraManager] Setting up session...")
-        // Check camera availability BEFORE creating session
         guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
             print("[CameraManager] ❌ Camera unavailable - no wide angle camera found")
             return
         }
         print("[CameraManager] Found camera: \(camera.localizedName)")
-        
+
         guard let input = try? AVCaptureDeviceInput(device: camera) else {
             print("[CameraManager] ❌ Failed to create input - permission denied or simulator")
             return
         }
-        
-        // Only create session if camera is available
+
         let captureSession = AVCaptureSession()
         captureSession.beginConfiguration()
         captureSession.sessionPreset = .photo
-        
+
         if captureSession.canAddInput(input) {
             captureSession.addInput(input)
             print("[CameraManager] ✅ Input added to session")
         } else {
             print("[CameraManager] ❌ Cannot add input to session")
         }
-        
+
         if captureSession.canAddOutput(photoOutput) {
             captureSession.addOutput(photoOutput)
             print("[CameraManager] ✅ Photo output added to session")
         } else {
             print("[CameraManager] ❌ Cannot add photo output to session")
         }
-        
+
         captureSession.commitConfiguration()
-        self.session = captureSession
-        print("[CameraManager] ✅ Session configured successfully")
+
+        // Start on the same serial queue before exposing `session` so onAppear never races a nil session.
+        if !captureSession.isRunning {
+            captureSession.startRunning()
+            print("[CameraManager] ✅ Session running after configuration")
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.session = captureSession
+            print("[CameraManager] ✅ Session configured successfully")
+        }
     }
-    
+
     func startSession() {
-        guard let session else {
-            print("[CameraManager] ❌ Cannot start - session is nil")
-            return
-        }
-        guard !session.isRunning else {
-            print("[CameraManager] Session already running")
-            return
-        }
-        print("[CameraManager] Starting session...")
-        DispatchQueue.global(qos: .userInitiated).async {
+        sessionQueue.async { [weak self] in
+            guard let self, let session = self.session else {
+                print("[CameraManager] ❌ Cannot start - session is nil")
+                return
+            }
+            guard !session.isRunning else {
+                print("[CameraManager] Session already running")
+                return
+            }
+            print("[CameraManager] Starting session...")
             session.startRunning()
             print("[CameraManager] ✅ Session started")
         }
     }
-    
+
     func stopSession() {
-        guard let session else {
-            print("[CameraManager] ❌ Cannot stop - session is nil")
-            return
-        }
-        guard session.isRunning else {
-            print("[CameraManager] Session already stopped")
-            return
-        }
-        print("[CameraManager] Stopping session...")
-        DispatchQueue.global(qos: .userInitiated).async {
+        sessionQueue.async { [weak self] in
+            guard let self, let session = self.session else {
+                print("[CameraManager] ❌ Cannot stop - session is nil")
+                return
+            }
+            guard session.isRunning else {
+                print("[CameraManager] Session already stopped")
+                return
+            }
+            print("[CameraManager] Stopping session...")
             session.stopRunning()
             print("[CameraManager] ✅ Session stopped")
         }
     }
-    
+
     func capturePhoto(completion: @escaping (UIImage?) -> Void) {
-        guard let session = session, session.isRunning else {
-            print("[CameraManager] Cannot capture: session not running")
-            completion(nil)
-            return
+        sessionQueue.async { [weak self] in
+            guard let self else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            guard let session = self.session, session.isRunning else {
+                print("[CameraManager] Cannot capture: session not running")
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            self.captureCompletion = completion
+            let settings = AVCapturePhotoSettings()
+            self.photoOutput.capturePhoto(with: settings, delegate: self)
         }
-        captureCompletion = completion
-        
-        let settings = AVCapturePhotoSettings()
-        photoOutput.capturePhoto(with: settings, delegate: self)
     }
 }
 
@@ -508,22 +524,28 @@ extension CameraManager: AVCapturePhotoCaptureDelegate {
         if let error = error {
             print("[CameraManager] Photo capture error: \(error)")
             DispatchQueue.main.async {
-                self.captureCompletion?(nil)
+                let done = self.captureCompletion
+                self.captureCompletion = nil
+                done?(nil)
             }
             return
         }
-        
+
         guard let data = photo.fileDataRepresentation(),
               let image = UIImage(data: data) else {
             print("[CameraManager] Failed to create image from photo data")
             DispatchQueue.main.async {
-                self.captureCompletion?(nil)
+                let done = self.captureCompletion
+                self.captureCompletion = nil
+                done?(nil)
             }
             return
         }
-        
+
         DispatchQueue.main.async {
-            self.captureCompletion?(image)
+            let done = self.captureCompletion
+            self.captureCompletion = nil
+            done?(image)
         }
     }
 }

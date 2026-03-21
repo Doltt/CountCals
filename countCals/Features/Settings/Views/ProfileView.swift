@@ -310,6 +310,34 @@ struct ProfileView: View {
                 .padding(.horizontal, 4)
             }
             .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(settings.language == .chinese ? "科学来源" : "Scientific Sources")
+                    .font(.paceRounded(.caption, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(settings.language == .chinese
+                    ? "计算依据 Mifflin-St Jeor 公式与 DRI 活动系数。"
+                    : "Based on Mifflin-St Jeor and DRI activity multipliers.")
+                    .font(.paceRounded(.caption))
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    showingFormulaDetail = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "book.fill")
+                            .font(.paceRounded(.caption, weight: .semibold))
+                        Text(settings.language == .chinese ? "查看完整文献与链接" : "View full references and links")
+                            .font(.paceRounded(.caption, weight: .semibold))
+                    }
+                    .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(cardBackground, in: RoundedRectangle(cornerRadius: 12))
         }
     }
     
@@ -630,6 +658,9 @@ private struct FormulaDetailSheet: View {
             ? Color(red: 0.15, green: 0.15, blue: 0.16)
             : Color(.secondarySystemBackground)
     }
+
+    private let mifflinURL = URL(string: "https://pubmed.ncbi.nlm.nih.gov/2305711/")
+    private let activityURL = URL(string: "https://nap.nationalacademies.org/catalog/10490/dietary-reference-intakes-for-energy-carbohydrate-fiber-fat-fatty-acids")
     
     var body: some View {
         NavigationStack {
@@ -706,19 +737,28 @@ private struct FormulaDetailSheet: View {
                         VStack(alignment: .leading, spacing: 12) {
                             referenceItem(
                                 number: "1",
-                                text: L(.mifflinReference)
+                                text: L(.mifflinReference),
+                                url: mifflinURL
                             )
                             
                             Divider()
                             
                             referenceItem(
                                 number: "2",
-                                text: L(.activityReference)
+                                text: L(.activityReference),
+                                url: activityURL
                             )
                         }
                         .padding()
                         .background(cardBackground, in: RoundedRectangle(cornerRadius: 16))
                     }
+
+                    Text(settings.language == .chinese
+                        ? "免责声明：本应用提供一般健康信息，不构成医疗建议。"
+                        : "Disclaimer: This app provides general wellness information and not medical advice.")
+                        .font(.paceRounded(.caption))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
                 }
                 .padding()
             }
@@ -766,17 +806,29 @@ private struct FormulaDetailSheet: View {
         }
     }
     
-    private func referenceItem(number: String, text: String) -> some View {
+    private func referenceItem(number: String, text: String, url: URL?) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Text("[\(number)]")
                 .font(.paceRounded(.caption, weight: .medium))
                 .foregroundStyle(.secondary)
                 .frame(width: 24, alignment: .leading)
             
-            Text(text)
-                .font(.paceRounded(.caption))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(text)
+                    .font(.paceRounded(.caption))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let url {
+                    Link(destination: url) {
+                        Text(url.absoluteString)
+                            .font(.paceRounded(.caption2))
+                            .foregroundStyle(.blue)
+                            .lineLimit(2)
+                            .truncationMode(.middle)
+                    }
+                }
+            }
         }
     }
 }

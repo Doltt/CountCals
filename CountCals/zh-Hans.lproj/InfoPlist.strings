@@ -5,6 +5,7 @@
 
 /* Photo library permission */
 "NSPhotoLibraryAddUsageDescription" = "需要相册权限来保存食物贴纸。";
+"NSPhotoLibraryUsageDescription" = "需要相册权限来选择食物照片进行卡路里识别。";
 
 /* App display name */
 "CFBundleDisplayName" = "BaguetteCal";

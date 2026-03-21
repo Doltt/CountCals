@@ -5,6 +5,7 @@
 
 /* Photo library permission */
 "NSPhotoLibraryAddUsageDescription" = "Photo library access is needed to save food stickers.";
+"NSPhotoLibraryUsageDescription" = "Photo library access is needed to select food photos for calorie tracking.";
 
 /* App display name */
 "CFBundleDisplayName" = "BaguetteCal";
