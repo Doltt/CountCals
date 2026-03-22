@@ -61,7 +61,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		19FD6E632F1E838A00CEA24D /* Exceptions for "CountCals" folder in "countCals" target */ = {
+		19FD6E632F1E838A00CEA24D /* Exceptions for "countCals" folder in "countCals" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -78,12 +78,12 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		19FD6E422F1E838300CEA24D /* CountCals */ = {
+		19FD6E422F1E838300CEA24D /* countCals */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				19FD6E632F1E838A00CEA24D /* Exceptions for "CountCals" folder in "countCals" target */,
+				19FD6E632F1E838A00CEA24D /* Exceptions for "countCals" folder in "countCals" target */,
 			);
-			path = CountCals;
+			path = countCals;
 			sourceTree = "<group>";
 		};
 		19FD6E542F1E838A00CEA24D /* countCalsTests */ = {
@@ -144,7 +144,7 @@
 			isa = PBXGroup;
 			children = (
 				19FD6EF82F27704D00CEA24D /* WidgetsExtension.entitlements */,
-				19FD6E422F1E838300CEA24D /* CountCals */,
+				19FD6E422F1E838300CEA24D /* countCals */,
 				19FD6E542F1E838A00CEA24D /* countCalsTests */,
 				19FD6E5E2F1E838A00CEA24D /* countCalsUITests */,
 				19FD6EE22F276FA300CEA24D /* Widgets */,
@@ -191,7 +191,7 @@
 				19FD6EF12F276FA600CEA24D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				19FD6E422F1E838300CEA24D /* CountCals */,
+				19FD6E422F1E838300CEA24D /* countCals */,
 			);
 			name = countCals;
 			packageProductDependencies = (
@@ -299,7 +299,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
-				zh-Hans,
+				"zh-Hans",
 				Base,
 			);
 			mainGroup = 19FD6E372F1E838300CEA24D;
@@ -403,13 +403,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = CountCals/countCals.entitlements;
+				CODE_SIGN_ENTITLEMENTS = countCals/countCals.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3488U99HV8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = CountCals/Info.plist;
+				INFOPLIST_FILE = countCals/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -441,13 +441,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = CountCals/countCals.entitlements;
+				CODE_SIGN_ENTITLEMENTS = countCals/countCals.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3488U99HV8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = CountCals/Info.plist;
+				INFOPLIST_FILE = countCals/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
